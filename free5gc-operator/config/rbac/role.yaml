@@ -1,0 +1,89 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments/status
+  verbs:
+  - get
+- apiGroups:
+  - free5gc.nephio.org
+  resources:
+  - imageconfigs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - free5gc.nephio.org
+  resources:
+  - imageconfigs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - free5gc.nephio.org
+  resources:
+  - imageconfigs/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - nfdeploy.nephio.io
+  resources:
+  - upfdeploys
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - nfdeploy.nephio.io
+  resources:
+  - upfdeploys/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - nfdeploy.nephio.io
+  resources:
+  - upfdeploys/status
+  verbs:
+  - get
+  - patch
+  - update

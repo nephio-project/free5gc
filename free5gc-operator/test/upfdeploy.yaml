@@ -1,0 +1,39 @@
+apiVersion: nf.nephio.org/v1alpha1
+kind: UPFDeployment
+metadata:
+  name: free5gc-upf-1
+  namespace: upf-1
+spec:
+  n3Interfaces:
+  - name : n3-1
+    gwAddr:
+    - "10.10.5.1"
+    ipAddr:
+    - "10.10.5.3/24"
+  n4Interfaces:
+  - name: n4-1
+    gwAddr:
+    - "192.168.100.1"
+    ipAddr:
+    - "192.168.100.3/24"
+  n6Interfaces:
+  - dnn: internet
+    interface:
+      name: n6-1
+      ipAddr:
+        - "10.20.3.3/24"
+      gwAddr:
+        - "10.20.3.1"
+    ipAddrPool: 10.20.3.0/24
+  capacity:
+    downlinkThroughput: 10Gb
+    uplinkThroughput: 1Gb
+---
+apiVersion: free5gc.nephio.org/v1alpha1
+kind: ImageConfig
+metadata:
+  name: free5gc-upf-1
+  namespace: upf-1
+spec:
+  imagePaths:
+    upf: towards5gs/free5gc-upf:v3.1.1

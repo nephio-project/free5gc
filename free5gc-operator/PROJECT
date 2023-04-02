@@ -1,0 +1,16 @@
+domain: nephio.org
+layout:
+- go.kubebuilder.io/v3
+projectName: free5gc-operator
+repo: github.com/nephio-project/nephio-pocs/free5gc-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: nephio.org
+  group: free5gc
+  kind: ImageConfig
+  path: github.com/nephio-project/nephio-pocs/free5gc-operator/api/v1alpha1
+  version: v1alpha1
+version: "3"
