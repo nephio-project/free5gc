@@ -128,6 +128,12 @@ func free5gcUPFDeployment(upfDeploy *upfdeployv1alpha1.UPFDeployment) (*appsv1.D
 	instanceNadLabel, err := getNad(upfDeploy.ObjectMeta.Name, &spec)
 	instanceNad := make(map[string]string)
 	instanceNad["k8s.v1.cni.cncf.io/networks"] = instanceNadLabel
+	securityContext := &apiv1.SecurityContext{
+		Capabilities: &apiv1.Capabilities{
+			Add: []apiv1.Capability{"NET_ADMIN"},
+			Drop: nil,
+		}
+	}
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      instanceName,
@@ -153,6 +159,7 @@ func free5gcUPFDeployment(upfDeploy *upfdeployv1alpha1.UPFDeployment) (*appsv1.D
 							Name:            "upf",
 							Image:           upfImage,
 							ImagePullPolicy: "Always",
+							SecurityContext: securityContext,
 							Ports: []apiv1.ContainerPort{
 								{
 									Name:          "n4",
