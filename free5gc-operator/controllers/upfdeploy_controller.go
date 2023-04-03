@@ -123,6 +123,8 @@ func getNad(log logr.Logger, templateName string, spec *upfdeployv1alpha1.UPFDep
     ]`
 	// fmt.Printf("SKW: returning NAD label %v\n", ret)
 	log.Info(fmt.Sprintf("Returning NAD annotation %v\n", ret))
+	// fmt.Printf("SKW: returning NAD label %v\n", ret)
+	log.Info(fmt.Sprintf("Returning NAD annotation %v\n", ret))
 	return ret, nil
 }
 
@@ -229,6 +231,8 @@ func free5gcUPFDeployment(log logr.Logger, upfDeploy *upfdeployv1alpha1.UPFDeplo
 	}
 	// fmt.Printf("SKW: returning deployment %v\n", deployment)
 	log.Info(fmt.Sprintf("Returning deployment %s\n", deployment.ObjectMeta.Name))
+	// fmt.Printf("SKW: returning deployment %v\n", deployment)
+	log.Info(fmt.Sprintf("Returning deployment %s\n", deployment.ObjectMeta.Name))
 	return deployment, nil
 }
 
@@ -297,6 +301,7 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			return reconcile.Result{}, nil
 		}
 		log.Error(err, fmt.Sprint("Error: failed to get UPFDeployment"))
+		log.Error(err, fmt.Sprint("Error: failed to get UPFDeployment"))
 		return reconcile.Result{}, err
 	}
 
@@ -355,10 +360,12 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		if cmFound {
 			if err := r.Client.Update(ctx, cm); err != nil {
 				log.Error(err, fmt.Sprintf("Error: failed to update configmap %s\n", err.Error()))
+				log.Error(err, fmt.Sprintf("Error: failed to update configmap %s\n", err.Error()))
 				return reconcile.Result{}, err
 			}
 		} else {
 			if err := r.Client.Create(ctx, cm); err != nil {
+				log.Error(err, fmt.Sprintf("Error: failed to create configmap %s\n", err.Error()))
 				log.Error(err, fmt.Sprintf("Error: failed to create configmap %s\n", err.Error()))
 				return reconcile.Result{}, err
 			}
