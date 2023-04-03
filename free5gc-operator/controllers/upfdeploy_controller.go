@@ -32,9 +32,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/go-logr/logr"
 	upfdeployv1alpha1 "github.com/nephio-project/nephio-pocs/nephio-5gc-controller/apis/nf/v1alpha1"
 )
 
@@ -79,7 +81,7 @@ func constructNadName(templateName string, suffix string) string {
 	return templateName + "-" + suffix
 }
 
-func getNad(templateName string, spec *upfdeployv1alpha1.UPFDeploymentSpec) (string, error) {
+func getNad(log logr.Logger, templateName string, spec *upfdeployv1alpha1.UPFDeploymentSpec) (string, error) {
 	var ret string
 	var n6IntfSlice = make([]upfdeployv1alpha1.InterfaceConfig, 0)
 	for _, n6intf := range spec.N6Interfaces {
@@ -101,7 +103,6 @@ func getNad(templateName string, spec *upfdeployv1alpha1.UPFDeploymentSpec) (str
 	noComma := true
 	for _, key := range inftMapKeys {
 		for _, intf := range intfMap[key] {
-
 			// for key, upfIntfArray := range intfMap {
 			// for _, intf := range upfIntfArray {
 			newNad := fmt.Sprintf(`
@@ -120,11 +121,12 @@ func getNad(templateName string, spec *upfdeployv1alpha1.UPFDeploymentSpec) (str
 	}
 	ret = ret + `
     ]`
-	fmt.Printf("SKW: returning NAD label %v\n", ret)
+	// fmt.Printf("SKW: returning NAD label %v\n", ret)
+	log.Info(fmt.Sprintf("Returning NAD annotation %v\n", ret))
 	return ret, nil
 }
 
-func free5gcUPFDeployment(upfDeploy *upfdeployv1alpha1.UPFDeployment) (*appsv1.Deployment, error) {
+func free5gcUPFDeployment(log logr.Logger, upfDeploy *upfdeployv1alpha1.UPFDeployment) (*appsv1.Deployment, error) {
 	//TODO(jbelamaric): Update to use ImageConfig spec.ImagePaths["upf"],
 	upfImage := "towards5gs/free5gc-upf:v3.1.1"
 
@@ -136,7 +138,7 @@ func free5gcUPFDeployment(upfDeploy *upfdeployv1alpha1.UPFDeployment) (*appsv1.D
 	if err != nil {
 		return nil, err
 	}
-	instanceNadLabel, err := getNad(upfDeploy.ObjectMeta.Name, &spec)
+	instanceNadLabel, err := getNad(log, upfDeploy.ObjectMeta.Name, &spec)
 	instanceNad := make(map[string]string)
 	instanceNad["k8s.v1.cni.cncf.io/networks"] = instanceNadLabel
 	securityContext := &apiv1.SecurityContext{
@@ -225,11 +227,12 @@ func free5gcUPFDeployment(upfDeploy *upfdeployv1alpha1.UPFDeployment) (*appsv1.D
 			}, // PodTemplateSpec
 		}, // PodTemplateSpec
 	}
-	fmt.Printf("SKW: returning deployment %v\n", deployment)
+	// fmt.Printf("SKW: returning deployment %v\n", deployment)
+	log.Info(fmt.Sprintf("Returning deployment %s\n", deployment.ObjectMeta.Name))
 	return deployment, nil
 }
 
-func free5gcUPFCreateConfigmap(upfDeploy *upfdeployv1alpha1.UPFDeployment) (*apiv1.ConfigMap, error) {
+func free5gcUPFCreateConfigmap(logger logr.Logger, upfDeploy *upfdeployv1alpha1.UPFDeployment) (*apiv1.ConfigMap, error) {
 	namespace := upfDeploy.ObjectMeta.Namespace
 	instanceName := upfDeploy.ObjectMeta.Name
 	// TODO(user): for now, assuming one DNN
@@ -261,7 +264,8 @@ func free5gcUPFCreateConfigmap(upfDeploy *upfdeployv1alpha1.UPFDeployment) (*api
 			"wrapper.sh":  wrapper,
 		},
 	}
-	fmt.Printf("SKW: returning configmap %v\n", configMap)
+	// fmt.Printf("SKW: returning configmap %v\n", configMap)
+	log.Log.Info(fmt.Sprintf("Returning configmap %s\n", configMap.ObjectMeta.Name))
 	return configMap, nil
 }
 
@@ -282,16 +286,17 @@ func free5gcUPFCreateConfigmap(upfDeploy *upfdeployv1alpha1.UPFDeployment) (*api
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.1/pkg/reconcile
 func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	log := log.FromContext(ctx).WithValues("UPFDeployment", req.NamespacedName)
 
 	upfDeploy := &upfdeployv1alpha1.UPFDeployment{}
 	err := r.Client.Get(ctx, req.NamespacedName, upfDeploy)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			// TODO(user): deleted after reconcile request --- need to handle
+			log.Info("UPFDeployment resource not found. Ignoring since object must be deleted")
 			return reconcile.Result{}, nil
 		}
-		fmt.Printf("Error: failed to get UPFDeployment %s\n", err.Error())
+		log.Error(err, fmt.Sprint("Error: failed to get UPFDeployment"))
 		return reconcile.Result{}, err
 	}
 
@@ -313,38 +318,55 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		dmFound = true
 	}
 
-	if upfDeploy.GetDeletionTimestamp() != nil {
-		// TODO(user): simple cleanup implementation
-		if cmFound {
-			if err := r.Client.Delete(ctx, currConfigmap); err != nil {
+	UPFDeploymentFinalizer := "upfdeployment.kubebuilder.io/finalizer"
+	if upfDeploy.ObjectMeta.DeletionTimestamp.IsZero() {
+		if !controllerutil.ContainsFinalizer(upfDeploy, UPFDeploymentFinalizer) {
+			controllerutil.AddFinalizer(upfDeploy, UPFDeploymentFinalizer)
+			if err := r.Client.Update(ctx, upfDeploy); err != nil {
 				return reconcile.Result{}, err
 			}
 		}
-		if dmFound {
-			return reconcile.Result{}, r.Client.Delete(ctx, currDeployment)
+	} else {
+		if controllerutil.ContainsFinalizer(upfDeploy, UPFDeploymentFinalizer) {
+			log.Info(fmt.Sprintf("Deleting UPF CofigMap and Deployment: %v\n", upfDeploy.ObjectMeta.Name))
+			if cmFound {
+				if err := r.Client.Delete(ctx, currConfigmap); err != nil {
+					return reconcile.Result{}, err
+				}
+			}
+			if dmFound {
+				if err := r.Client.Delete(ctx, currDeployment); err != nil {
+					return reconcile.Result{}, err
+				}
+			}
+			controllerutil.RemoveFinalizer(upfDeploy, UPFDeploymentFinalizer)
+			if err := r.Client.Update(ctx, upfDeploy); err != nil {
+				return reconcile.Result{}, err
+			}
 		}
+		return reconcile.Result{}, nil
 	}
 
 	// first set up the configmap
-	if cm, err := free5gcUPFCreateConfigmap(upfDeploy); err != nil {
-		fmt.Printf("Error: failed to generate configmap %s\n", err.Error())
+	if cm, err := free5gcUPFCreateConfigmap(log, upfDeploy); err != nil {
+		log.Error(err, fmt.Sprintf("Error: failed to generate configmap %s\n", err.Error()))
 		return reconcile.Result{}, err
 	} else {
 		if cmFound {
 			if err := r.Client.Update(ctx, cm); err != nil {
-				fmt.Printf("Error: failed to update configmap %s\n", err.Error())
+				log.Error(err, fmt.Sprintf("Error: failed to update configmap %s\n", err.Error()))
 				return reconcile.Result{}, err
 			}
 		} else {
 			if err := r.Client.Create(ctx, cm); err != nil {
-				fmt.Printf("Error: failed to create configmap %s\n", err.Error())
+				log.Error(err, fmt.Sprintf("Error: failed to create configmap %s\n", err.Error()))
 				return reconcile.Result{}, err
 			}
 		}
 	}
 
-	if deployment, err := free5gcUPFDeployment(upfDeploy); err != nil {
-		fmt.Printf("Error: failed to generate deployment %s\n", err.Error())
+	if deployment, err := free5gcUPFDeployment(log, upfDeploy); err != nil {
+		log.Error(err, fmt.Sprintf("Error: failed to generate deployment %s\n", err.Error()))
 		return reconcile.Result{}, err
 	} else {
 		if dmFound {

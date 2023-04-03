@@ -17,6 +17,7 @@ limitations under the License.
 package controllers
 
 import (
+	"context"
 	"net"
 	"reflect"
 	"strings"
@@ -26,6 +27,7 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	upfdeployv1alpha1 "github.com/nephio-project/nephio-pocs/nephio-5gc-controller/apis/nf/v1alpha1"
 )
@@ -166,8 +168,9 @@ func TestConstructNadName(t *testing.T) {
 }
 
 func TestGetNad(t *testing.T) {
+	log := log.FromContext(context.TODO())
 	upfDeploymentSpec := newUpfDeploymentSpec()
-	got, err := getNad("test-upf-deployment", upfDeploymentSpec)
+	got, err := getNad(log, "test-upf-deployment", upfDeploymentSpec)
 	if err != nil {
 		t.Errorf("getNad() returned unexpected error %v", err)
 	}
@@ -196,8 +199,9 @@ func TestGetNad(t *testing.T) {
 }
 
 func TestFree5gcUPFCreateConfigmap(t *testing.T) {
+	log := log.FromContext(context.TODO())
 	upfDeploymentInstance := newUpfDeployInstance("test-upf-deployment")
-	got, err := free5gcUPFCreateConfigmap(upfDeploymentInstance)
+	got, err := free5gcUPFCreateConfigmap(log, upfDeploymentInstance)
 	if err != nil {
 		t.Errorf("free5gcUPFCreateConfigmap() returned unexpected error %v", err)
 	}
@@ -236,8 +240,9 @@ func TestFree5gcUPFCreateConfigmap(t *testing.T) {
 }
 
 func TestFree5gcUPFDeployment(t *testing.T) {
+	log := log.FromContext(context.TODO())
 	upfDeploymentInstance := newUpfDeployInstance("test-upf-deployment")
-	got, err := free5gcUPFDeployment(upfDeploymentInstance)
+	got, err := free5gcUPFDeployment(log, upfDeploymentInstance)
 	if err != nil {
 		t.Errorf("free5gcUPFDeployment() returned unexpected error %v", err)
 	}
