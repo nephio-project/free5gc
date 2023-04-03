@@ -35,10 +35,11 @@ spec:
           spec:
             description: ImageConfigSpec defines the desired state of ImageConfig
             properties:
-              foo:
-                description: Foo is an example field of ImageConfig. Edit imageconfig_types.go
-                  to remove/update
-                type: string
+              imagePaths:
+                additionalProperties:
+                  type: string
+                description: ImagePaths is used to find the free5gc images
+                type: object
             type: object
           status:
             description: ImageConfigStatus defines the observed state of ImageConfig

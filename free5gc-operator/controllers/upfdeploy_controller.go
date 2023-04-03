@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -90,9 +91,19 @@ func getNad(templateName string, spec *upfdeployv1alpha1.UPFDeploymentSpec) (str
 		"n4": spec.N4Interfaces,
 		"n6": n6IntfSlice,
 		"n9": spec.N9Interfaces}
+	// Need to sort inftMap by key otherwise unitTests might fail as order of intefaces in intfMap is not guaranteed
+	inftMapKeys := make([]string, 0, len(intfMap))
+	for interfaceName := range intfMap {
+		inftMapKeys = append(inftMapKeys, interfaceName)
+	}
+	sort.Strings(inftMapKeys)
+
 	noComma := true
-	for key, upfIntfArray := range intfMap {
-		for _, intf := range upfIntfArray {
+	for _, key := range inftMapKeys {
+		for _, intf := range intfMap[key] {
+
+			// for key, upfIntfArray := range intfMap {
+			// for _, intf := range upfIntfArray {
 			newNad := fmt.Sprintf(`
         {"name": "%s",
          "interface": "%s",
@@ -130,9 +141,9 @@ func free5gcUPFDeployment(upfDeploy *upfdeployv1alpha1.UPFDeployment) (*appsv1.D
 	instanceNad["k8s.v1.cni.cncf.io/networks"] = instanceNadLabel
 	securityContext := &apiv1.SecurityContext{
 		Capabilities: &apiv1.Capabilities{
-			Add: []apiv1.Capability{"NET_ADMIN"},
+			Add:  []apiv1.Capability{"NET_ADMIN"},
 			Drop: nil,
-		}
+		},
 	}
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
