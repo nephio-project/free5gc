@@ -17,11 +17,12 @@ limitations under the License.
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"html/template"
 	"net"
 	"sort"
-	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -44,6 +45,12 @@ import (
 type UPFDeploymentReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+}
+
+type UPFcfgStruct struct {
+	PFCP_IP string
+	GTPU_IP string
+	N6cfg   []upfdeployv1alpha1.N6InterfaceConfig
 }
 
 func getResourceParams(capacity upfdeployv1alpha1.UPFCapacity) (int32, *apiv1.ResourceRequirements, error) {
@@ -235,20 +242,38 @@ func free5gcUPFDeployment(log logr.Logger, upfDeploy *upfdeployv1alpha1.UPFDeplo
 func free5gcUPFCreateConfigmap(logger logr.Logger, upfDeploy *upfdeployv1alpha1.UPFDeployment) (*apiv1.ConfigMap, error) {
 	namespace := upfDeploy.ObjectMeta.Namespace
 	instanceName := upfDeploy.ObjectMeta.Name
-	// TODO(user): for now, assuming one DNN
 	n4IP, _, _ := net.ParseCIDR(upfDeploy.Spec.N4Interfaces[0].IPs[0])
 	n3IP, _, _ := net.ParseCIDR(upfDeploy.Spec.N3Interfaces[0].IPs[0])
-	n6Intf := upfDeploy.Spec.N6Interfaces[0]
-	upfcfg := strings.Clone(UPFCfg)
-	upfcfg = strings.Replace(upfcfg, "$DNN_CIDR", n6Intf.UEIPPool, 1)
-	upfcfg = strings.Replace(upfcfg, "$DNN", n6Intf.DNN, 1)
-	upfcfg = strings.Replace(upfcfg, "$PFCP_IP", n4IP.String(), 1)
-	upfcfg = strings.Replace(upfcfg, "$GTPU_IP", n3IP.String(), 1)
 
-	wrapper := strings.Clone(UPFWrapperScript)
-	wrapper = strings.Replace(wrapper, "$DNN_NETWORK", n6Intf.UEIPPool, 2)
-	wrapper = strings.Replace(wrapper, "$N6_INTERFACE_NAME", n6Intf.Interface.Name, 2)
-	wrapper = strings.Replace(wrapper, "$N6_GATEWAY", n6Intf.Interface.GatewayIPs[0], 1)
+	upfcfgStruct := UPFcfgStruct{}
+	upfcfgStruct.PFCP_IP = n4IP.String()
+	upfcfgStruct.GTPU_IP = n3IP.String()
+	upfcfgStruct.N6cfg = upfDeploy.Spec.N6Interfaces
+
+	upfcfgTemplate := template.New("UPFCfg")
+	upfcfgTemplate, err := upfcfgTemplate.Parse(UPFCfgTemplate)
+	if err != nil {
+		log.Log.Info("Could not parse UPFCfgTemplate template.")
+		return nil, err
+	}
+	upfwrapperTemplate := template.New("UPFCfg")
+	upfwrapperTemplate, _ = upfwrapperTemplate.Parse(UPFWrapperScript)
+	if err != nil {
+		log.Log.Info("Could not parse UPFWrapperScript template.")
+		return nil, err
+	}
+
+	var wrapper bytes.Buffer
+	if err := upfwrapperTemplate.Execute(&wrapper, upfcfgStruct); err != nil {
+		log.Log.Info("Could not render UPFWrapperScript template.")
+		return nil, err
+	}
+
+	var upfcfg bytes.Buffer
+	if err := upfcfgTemplate.Execute(&upfcfg, upfcfgStruct); err != nil {
+		log.Log.Info("Could not render UPFCfgTemplate template.")
+		return nil, err
+	}
 
 	configMap := &apiv1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
@@ -260,11 +285,10 @@ func free5gcUPFCreateConfigmap(logger logr.Logger, upfDeploy *upfdeployv1alpha1.
 			Namespace: namespace,
 		},
 		Data: map[string]string{
-			"upfcfg.yaml": upfcfg,
-			"wrapper.sh":  wrapper,
+			"upfcfg.yaml": upfcfg.String(),
+			"wrapper.sh":  wrapper.String(),
 		},
 	}
-	// fmt.Printf("SKW: returning configmap %v\n", configMap)
 	log.Log.Info(fmt.Sprintf("Returning configmap %s\n", configMap.ObjectMeta.Name))
 	return configMap, nil
 }
