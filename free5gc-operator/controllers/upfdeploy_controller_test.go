@@ -169,9 +169,8 @@ func TestConstructNadName(t *testing.T) {
 }
 
 func TestGetNad(t *testing.T) {
-	log := log.FromContext(context.TODO())
 	upfDeploymentSpec := newUpfDeploymentSpec()
-	got, err := getNad(log, "test-upf-deployment", upfDeploymentSpec)
+	got, err := getNad("test-upf-deployment", upfDeploymentSpec)
 	if err != nil {
 		t.Errorf("getNad() returned unexpected error %v", err)
 	}

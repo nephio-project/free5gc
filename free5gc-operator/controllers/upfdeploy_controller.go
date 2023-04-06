@@ -19,17 +19,21 @@ package controllers
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net"
 	"sort"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	resource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,6 +55,13 @@ type UPFcfgStruct struct {
 	PFCP_IP string
 	GTPU_IP string
 	N6cfg   []upfdeployv1alpha1.N6InterfaceConfig
+}
+
+type Annotation struct {
+	Name      string   `json:"name"`
+	Interface string   `json:"interface"`
+	IPs       []string `json:"ips"`
+	Gateways  []string `json:"gateway"`
 }
 
 func getResourceParams(capacity upfdeployv1alpha1.UPFCapacity) (int32, *apiv1.ResourceRequirements, error) {
@@ -88,7 +99,8 @@ func constructNadName(templateName string, suffix string) string {
 	return templateName + "-" + suffix
 }
 
-func getNad(log logr.Logger, templateName string, spec *upfdeployv1alpha1.UPFDeploymentSpec) (string, error) {
+// getNads retursn NAD label string composed based on the Nx interfaces configuration provided in UPFDeploymentSpec
+func getNad(templateName string, spec *upfdeployv1alpha1.UPFDeploymentSpec) (string, error) {
 	var ret string
 	var n6IntfSlice = make([]upfdeployv1alpha1.InterfaceConfig, 0)
 	for _, n6intf := range spec.N6Interfaces {
@@ -110,8 +122,6 @@ func getNad(log logr.Logger, templateName string, spec *upfdeployv1alpha1.UPFDep
 	noComma := true
 	for _, key := range inftMapKeys {
 		for _, intf := range intfMap[key] {
-			// for key, upfIntfArray := range intfMap {
-			// for _, intf := range upfIntfArray {
 			newNad := fmt.Sprintf(`
         {"name": "%s",
          "interface": "%s",
@@ -128,9 +138,37 @@ func getNad(log logr.Logger, templateName string, spec *upfdeployv1alpha1.UPFDep
 	}
 	ret = ret + `
     ]`
-	// fmt.Printf("SKW: returning NAD label %v\n", ret)
-	log.Info(fmt.Sprintf("Returning NAD annotation %v\n", ret))
 	return ret, nil
+}
+
+// checkNADExists gets deployment object and checks "k8s.v1.cni.cncf.io/networks" NADs.
+// returns True if all requred NADs are present
+// returns False if any NAD doesn't exists in deployment namespace
+func (r *UPFDeploymentReconciler) checkNADexist(log logr.Logger, ctx context.Context, deployment *appsv1.Deployment) bool {
+	annotations := []Annotation{}
+	annotationsString, ok := deployment.Spec.Template.GetAnnotations()["k8s.v1.cni.cncf.io/networks"]
+	if !ok {
+		log.Info("Annotations k8s.v1.cni.cncf.io/networks not found", "UPFDeployment.namespace", deployment.Namespace)
+		return false
+	}
+	if err := json.Unmarshal([]byte(annotationsString), &annotations); err != nil {
+		log.Info("Failed to parse UPFDeployment annotations", "UPFDeployment.namespace", deployment.Namespace)
+		return false
+	}
+	for _, annotation := range annotations {
+		u := &unstructured.Unstructured{}
+		u.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "k8s.cni.cncf.io",
+			Kind:    "NetworkAttachmentDefinition",
+			Version: "v1",
+		})
+		key := client.ObjectKey{Namespace: deployment.ObjectMeta.Namespace, Name: annotation.Name}
+		if err := r.Get(ctx, key, u); err != nil {
+			return false
+		}
+	}
+
+	return true
 }
 
 func free5gcUPFDeployment(log logr.Logger, upfDeploy *upfdeployv1alpha1.UPFDeployment) (*appsv1.Deployment, error) {
@@ -145,7 +183,7 @@ func free5gcUPFDeployment(log logr.Logger, upfDeploy *upfdeployv1alpha1.UPFDeplo
 	if err != nil {
 		return nil, err
 	}
-	instanceNadLabel, err := getNad(log, upfDeploy.ObjectMeta.Name, &spec)
+	instanceNadLabel, err := getNad(upfDeploy.ObjectMeta.Name, &spec)
 	instanceNad := make(map[string]string)
 	instanceNad["k8s.v1.cni.cncf.io/networks"] = instanceNadLabel
 	securityContext := &apiv1.SecurityContext{
@@ -234,8 +272,7 @@ func free5gcUPFDeployment(log logr.Logger, upfDeploy *upfdeployv1alpha1.UPFDeplo
 			}, // PodTemplateSpec
 		}, // PodTemplateSpec
 	}
-	// fmt.Printf("SKW: returning deployment %v\n", deployment)
-	log.Info(fmt.Sprintf("Returning deployment %s\n", deployment.ObjectMeta.Name))
+	// log.Info(fmt.Sprintf("Returning deployment %s\n", deployment.ObjectMeta.Name))
 	return deployment, nil
 }
 
@@ -289,7 +326,7 @@ func free5gcUPFCreateConfigmap(logger logr.Logger, upfDeploy *upfdeployv1alpha1.
 			"wrapper.sh":  wrapper.String(),
 		},
 	}
-	log.Log.Info(fmt.Sprintf("Returning configmap %s\n", configMap.ObjectMeta.Name))
+	// log.Log.Info(fmt.Sprintf("Returning configmap %s\n", configMap.ObjectMeta.Name))
 	return configMap, nil
 }
 
@@ -329,19 +366,69 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	cmFound := false
 	configmapName := upfDeploy.ObjectMeta.Name + "-upf-configmap"
 	currConfigmap := &apiv1.ConfigMap{}
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: configmapName, Namespace: namespace},
-		currConfigmap); err == nil {
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: configmapName, Namespace: namespace}, currConfigmap); err == nil {
 		cmFound = true
 	}
 
 	dmFound := false
 	dmName := upfDeploy.ObjectMeta.Name
 	currDeployment := &appsv1.Deployment{}
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: dmName, Namespace: namespace},
-		currDeployment); err == nil {
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: dmName, Namespace: namespace}, currDeployment); err == nil {
 		dmFound = true
 	}
 
+	// Update the app status with pod names
+	// List the pods for this app's deployment
+	podList := &apiv1.PodList{}
+	listOpts := []client.ListOption{
+		client.InNamespace(namespace),
+		client.MatchingLabels(upfDeploy.GetLabels()),
+	}
+
+	// Get list of pods in a namespace
+	if err = r.List(ctx, podList, listOpts...); err != nil {
+		log.Error(err, "Failed to list pods", "UPFDeployment.namespace", namespace, "UPFDeployment.name", upfDeploy.Name)
+		return reconcile.Result{}, err
+	}
+
+	// isPodReady check a pod conditions and if a pod's state is ready return true, condition Type and the last transition timesmap
+	isPodReady := func(pod *apiv1.Pod) (bool, apiv1.PodConditionType, metav1.Time) {
+		for _, c := range pod.Status.Conditions {
+			if (c.Type == apiv1.PodReady) && c.Status == apiv1.ConditionTrue {
+				return true, c.Type, c.LastTransitionTime
+			}
+		}
+		return false, "", metav1.Now()
+	}
+
+	// We assume status is ready and set it to NotReady if any upf pod is notReady or there are 0 upf pods present
+	statusReady := true
+	var lasttransistiontime metav1.Time
+	for _, pod := range podList.Items {
+		b, _, lastTransitiontime := isPodReady(&pod)
+		if !b {
+			statusReady = false
+		} else {
+			lasttransistiontime = lastTransitiontime
+		}
+	}
+	if !statusReady || len(podList.Items) == 0 {
+		upfDeploy.Status.OperationStatus = "NotReady"
+		upfDeploy.Status.OperationUpTime = metav1.Now()
+		if err := r.Status().Update(ctx, upfDeploy); err != nil {
+			log.Error(err, "Failed to update UPFDeployment status", "UPFDeployment.namespace", namespace)
+			return reconcile.Result{}, err
+		}
+	} else {
+		upfDeploy.Status.OperationStatus = "Ready"
+		upfDeploy.Status.OperationUpTime = lasttransistiontime
+		if err := r.Status().Update(ctx, upfDeploy); err != nil {
+			log.Error(err, "Failed to update UPFDeployment status", "UPFDeployment.namespace", namespace)
+		}
+	}
+
+	// Add a finilizer to upfdeployment during create.
+	// If upfdeployemnt set to be deleted, finilazer is removed only after underlying configmap and deployment objects are gone
 	UPFDeploymentFinalizer := "upfdeployment.kubebuilder.io/finalizer"
 	if upfDeploy.ObjectMeta.DeletionTimestamp.IsZero() {
 		if !controllerutil.ContainsFinalizer(upfDeploy, UPFDeploymentFinalizer) {
@@ -394,9 +481,16 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return reconcile.Result{}, err
 	} else {
 		if dmFound {
-			return reconcile.Result{}, r.Client.Update(ctx, deployment)
+			// Default reconcile timer is 5 minutes. Required to update status of UPFDeployemnt by quering underlying upf pods.
+			return reconcile.Result{RequeueAfter: time.Duration(5) * time.Minute}, r.Client.Update(ctx, deployment)
 		} else {
-			return reconcile.Result{}, r.Client.Create(ctx, deployment)
+			// only create deployment in case all required NADs are present. Otherwse Requeue in 10 sec.
+			if ok := r.checkNADexist(log, ctx, deployment); !ok {
+				log.Info("Not all NetworkAttachDefinitions available in current namespace. Requeue in 10 sec.", "UPFDeployment.namespace", namespace)
+				return reconcile.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
+			} else {
+				return reconcile.Result{}, r.Client.Create(ctx, deployment)
+			}
 		}
 	}
 }
