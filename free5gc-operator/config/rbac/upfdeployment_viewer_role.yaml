@@ -1,0 +1,27 @@
+# permissions for end users to view upfdeployments.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: upfdeployment-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: free5gc-operator
+    app.kubernetes.io/part-of: free5gc-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: upfdeployment-viewer-role
+rules:
+  - apiGroups:
+      - workload.nephio.org
+    resources:
+      - upfdeployments
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - workload.nephio.org
+    resources:
+      - upfdeployments/status
+    verbs:
+      - get
