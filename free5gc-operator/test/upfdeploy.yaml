@@ -1,0 +1,38 @@
+apiVersion: workload.nephio.org/v1alpha1
+kind: UPFDeployment
+metadata:
+  name: free5gc-upf-1
+  namespace: upf-1
+spec:
+  n3Interfaces:
+    - name: n3-1
+      gatewayIPs:
+        - "10.10.5.1"
+      ips:
+        - "10.10.5.3/24"
+  n4Interfaces:
+    - name: n4-1
+      gatewayIPs:
+        - "192.168.100.1"
+      ips:
+        - "192.168.100.3/24"
+  n6Interfaces:
+    - dnn: internet
+      interface:
+        name: n6-1
+        ips:
+          - "192.168.103.3/24"
+        gatewayIPs:
+          - "192.168.103.1"
+      ueIPPool: 10.20.0.0/16
+    - dnn: private
+      interface:
+        name: n6-2
+        ips:
+          - "192.168.203.3/24"
+        gatewayIPs:
+          - "192.168.203.1"
+      ueIPPool: 10.30.0.0/16
+  capacity:
+    downlinkThroughput: 10Gi
+    uplinkThroughput: 1G
