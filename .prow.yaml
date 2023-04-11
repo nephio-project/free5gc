@@ -1,13 +1,39 @@
 presubmits:
-  - name: env-test-sample-prow-job
+  - name: f5gc-operator-unit-test
     decorate: true
-    always_run: true
+    run_if_changed: "^free5gc-operator/.*.go$"
     spec:
       containers:
-      - image: golang:1.20.2
+      - image: nephio/gotests:2
         command:
         - "/bin/sh"
         args:
         - "-c"
         - |
-          env
+          cd free5gc-operator/ && make unit
+
+  - name: f5gc-operator-lint
+    decorate: true
+    run_if_changed: "^free5gc-operator/.*.go$"
+    spec:
+      containers:
+      - image: nephio/gotests:2
+        command:
+        - "/bin/sh"
+        args:
+        - "-c"
+        - |
+          cd free5gc-operator/ && make lint
+
+  - name: f5gc-operator-gosec
+    decorate: true
+    run_if_changed: "^free5gc-operator/.*.go$"
+    spec:
+      containers:
+      - image: nephio/gotests:2
+        command:
+        - "/bin/sh"
+        args:
+        - "-c"
+        - |
+          cd free5gc-operator/ && make gosec
