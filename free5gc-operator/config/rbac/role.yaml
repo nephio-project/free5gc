@@ -61,6 +61,32 @@ rules:
 - apiGroups:
   - workload.nephio.org
   resources:
+  - imageconfigs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - workload.nephio.org
+  resources:
+  - imageconfigs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - workload.nephio.org
+  resources:
+  - imageconfigs/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - workload.nephio.org
+  resources:
   - upfdeployments
   verbs:
   - create

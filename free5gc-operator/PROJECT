@@ -17,4 +17,13 @@ resources:
   kind: UPFDeployment
   path: github.com/nephio-project/free5gc/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: nephio.org
+  group: workload
+  kind: ImageConfig
+  path: github.com/nephio-project/free5gc/api/v1alpha1
+  version: v1alpha1
 version: "3"

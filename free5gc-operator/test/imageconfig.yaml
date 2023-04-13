@@ -1,0 +1,12 @@
+---
+apiVersion: workload.nephio.org/v1alpha1
+kind: ImageConfig
+metadata:
+  name: free5gc-images
+  namespace: free5gc-extension
+spec:
+  imagePaths:
+    upf: towards5gs/free5gc-upf:v3.1.1
+    smf: towards5gs/free5gc-smf:v3.1.1
+    amf: towards5gs/free5gc-amf:v3.1.1
+

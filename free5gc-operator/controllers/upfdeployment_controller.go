@@ -441,7 +441,6 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	err := r.Client.Get(ctx, req.NamespacedName, upfDeploy)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			// TODO(user): deleted after reconcile request --- need to handle
 			log.Info("UPFDeployment resource not found. Ignoring since object must be deleted")
 			return reconcile.Result{}, nil
 		}
