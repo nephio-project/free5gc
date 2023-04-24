@@ -20,9 +20,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
-	"net"
 	"sort"
 	"time"
 
@@ -38,12 +38,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/go-logr/logr"
-	workloadv1alpha1 "github.com/nephio-project/free5gc/api/v1alpha1"
+	workloadv1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
 )
 
 // UPFDeploymentReconciler reconciles a UPFDeployment object
@@ -55,7 +54,7 @@ type UPFDeploymentReconciler struct {
 type UPFcfgStruct struct {
 	PFCP_IP string
 	GTPU_IP string
-	N6cfg   []workloadv1alpha1.N6InterfaceConfig
+	N6cfg   []workloadv1alpha1.InterfaceConfig
 }
 
 type Annotation struct {
@@ -65,27 +64,29 @@ type Annotation struct {
 	Gateways  []string `json:"gateway"`
 }
 
-func getResourceParams(capacity workloadv1alpha1.UPFCapacity) (int32, *apiv1.ResourceRequirements, error) {
-	// TODO(user): operator should look at capacity profile to decide how much CPU it should
-	// request for this pod
-	// for now, hardcoded
+func getResourceParams(upfSpec workloadv1alpha1.UPFDeploymentSpec) (int32, *apiv1.ResourceRequirements, error) {
+	// Placeholder for Capacity calculation. Reqiurce requirements houlw be calculated based on DL, UL.
+
+	// TODO: increase number of recpicas based on NFDeployment.Capacity.MaxSessions
 	var replicas int32 = 1
-	cpuLimit := "500m"
-	memoryLimit := "512Mi"
-	cpuRequest := "500m"
-	memoryRequest := "512Mi"
-	/*
-		ret := &apiv1.ResourceRequirements{
-			Limits: map[string]string{
-				"cpu":    cpuLimit,
-				"memory": memoryLimit,
-			},
-			Requests: map[string]string{
-				"cpu":    cpuRequest,
-				"memory": memoryRequest,
-			},
-		}
-	*/
+
+	downlink := resource.MustParse("5G")
+	uplink := resource.MustParse("1G")
+	var cpuLimit string
+	var cpuRequest string
+	var memoryLimit string
+	var memoryRequest string
+	if upfSpec.Capacity.MaxDownlinkThroughput.Value() > downlink.MilliValue() && upfSpec.Capacity.MaxUplinkThroughput.Value() > uplink.MilliValue() {
+		cpuLimit = "1000m"
+		memoryLimit = "1Gi"
+		cpuRequest = "1000m"
+		memoryRequest = "1Gi"
+	} else {
+		cpuLimit = "500m"
+		memoryLimit = "512Mi"
+		cpuRequest = "500m"
+		memoryRequest = "512Mi"
+	}
 	resources := apiv1.ResourceRequirements{}
 	resources.Limits = make(apiv1.ResourceList)
 	resources.Limits[apiv1.ResourceCPU] = resource.MustParse(cpuLimit)
@@ -103,16 +104,19 @@ func constructNadName(templateName string, suffix string) string {
 // getNads retursn NAD label string composed based on the Nx interfaces configuration provided in UPFDeploymentSpec
 func getNad(templateName string, spec *workloadv1alpha1.UPFDeploymentSpec) string {
 	var ret string
-	var n6IntfSlice = make([]workloadv1alpha1.InterfaceConfig, 0)
-	for _, n6intf := range spec.N6Interfaces {
-		n6IntfSlice = append(n6IntfSlice, n6intf.Interface)
-	}
+
+	n6CfgSlice := getIntConfigSlice(spec.Interfaces, "N6")
+	n3CfgSlice := getIntConfigSlice(spec.Interfaces, "N3")
+	n4CfgSlice := getIntConfigSlice(spec.Interfaces, "N4")
+	n9CfgSlice := getIntConfigSlice(spec.Interfaces, "N9")
+
 	ret = `[`
 	intfMap := map[string][]workloadv1alpha1.InterfaceConfig{
-		"n3": spec.N3Interfaces,
-		"n4": spec.N4Interfaces,
-		"n6": n6IntfSlice,
-		"n9": spec.N9Interfaces}
+		"n3": n3CfgSlice,
+		"n4": n4CfgSlice,
+		"n6": n6CfgSlice,
+		"n9": n9CfgSlice,
+	}
 	// Need to sort inftMap by key otherwise unitTests might fail as order of intefaces in intfMap is not guaranteed
 	inftMapKeys := make([]string, 0, len(intfMap))
 	for interfaceName := range intfMap {
@@ -128,7 +132,7 @@ func getNad(templateName string, spec *workloadv1alpha1.UPFDeploymentSpec) strin
          "interface": "%s",
          "ips": ["%s"],
          "gateway": ["%s"]
-        }`, constructNadName(templateName, key), intf.Name, intf.IPs[0], intf.GatewayIPs[0])
+        }`, constructNadName(templateName, key), intf.Name, intf.IPv4.Address, *intf.IPv4.Gateway)
 			if noComma {
 				ret = ret + newNad
 				noComma = false
@@ -181,7 +185,7 @@ func free5gcUPFDeployment(log logr.Logger, upfDeploy *workloadv1alpha1.UPFDeploy
 	namespace := upfDeploy.ObjectMeta.Namespace
 	spec := upfDeploy.Spec
 	var wrapperMode int32 = 511 // 777 octal
-	replicas, resourceReq, err := getResourceParams(spec.Capacity)
+	replicas, resourceReq, err := getResourceParams(spec)
 	if err != nil {
 		return nil, err
 	}
@@ -281,16 +285,29 @@ func free5gcUPFDeployment(log logr.Logger, upfDeploy *workloadv1alpha1.UPFDeploy
 func free5gcUPFCreateConfigmap(logger logr.Logger, upfDeploy *workloadv1alpha1.UPFDeployment) (*apiv1.ConfigMap, error) {
 	namespace := upfDeploy.ObjectMeta.Namespace
 	instanceName := upfDeploy.ObjectMeta.Name
-	n4IP, _, _ := net.ParseCIDR(upfDeploy.Spec.N4Interfaces[0].IPs[0])
-	n3IP, _, _ := net.ParseCIDR(upfDeploy.Spec.N3Interfaces[0].IPs[0])
+	n4IP, err := getIPv4(upfDeploy.Spec.Interfaces, "N4")
+	if err != nil {
+		log.Log.Info("Interface N4 not found in NFDeployment Spec")
+		return nil, err
+	}
+	n3IP, err := getIPv4(upfDeploy.Spec.Interfaces, "N3")
+	if err != nil {
+		log.Log.Info("Interface N3 not found in NFDeployment Spec")
+		return nil, err
+	}
 
 	upfcfgStruct := UPFcfgStruct{}
-	upfcfgStruct.PFCP_IP = n4IP.String()
-	upfcfgStruct.GTPU_IP = n3IP.String()
-	upfcfgStruct.N6cfg = upfDeploy.Spec.N6Interfaces
+	upfcfgStruct.PFCP_IP = n4IP
+	upfcfgStruct.GTPU_IP = n3IP
+	n6Cfg := getIntConfigSlice(upfDeploy.Spec.Interfaces, "N6")
+	if len(n6Cfg) == 0 {
+		log.Log.Info("No N6 interface in NFDeployment Spec.")
+		return nil, errors.New("No N6 intefaces in NFDeployment Spec.")
+	}
+	upfcfgStruct.N6cfg = n6Cfg
 
 	upfcfgTemplate := template.New("UPFCfg")
-	upfcfgTemplate, err := upfcfgTemplate.Parse(UPFCfgTemplate)
+	upfcfgTemplate, err = upfcfgTemplate.Parse(UPFCfgTemplate)
 	if err != nil {
 		log.Log.Info("Could not parse UPFCfgTemplate template.")
 		return nil, err
@@ -338,7 +355,7 @@ func (r *UPFDeploymentReconciler) syncStatus(ctx context.Context, d *appsv1.Depl
 	if update {
 		// Update UPFDeployment status according to underlying deployment status
 		newUpf := upfDeploy
-		newUpf.Status = newStatus
+		newUpf.Status.NFDeploymentStatus = newStatus
 		err := r.Status().Update(ctx, newUpf)
 		return err
 	}
@@ -346,21 +363,20 @@ func (r *UPFDeploymentReconciler) syncStatus(ctx context.Context, d *appsv1.Depl
 	return nil
 }
 
-func calculateStatus(deployment *appsv1.Deployment, upfDeploy *workloadv1alpha1.UPFDeployment) (workloadv1alpha1.UPFDeploymentStatus, bool) {
-	status := workloadv1alpha1.UPFDeploymentStatus{
+func calculateStatus(deployment *appsv1.Deployment, upfDeploy *workloadv1alpha1.UPFDeployment) (workloadv1alpha1.NFDeploymentStatus, bool) {
+	status := workloadv1alpha1.NFDeploymentStatus{
 		ObservedGeneration: int32(deployment.Generation),
 		Conditions:         upfDeploy.Status.Conditions,
 	}
-	condition := workloadv1alpha1.NFCondition{}
+	condition := metav1.Condition{}
 
 	// Return initial status if there are no status update happened for the UPFdeployment
 	if len(upfDeploy.Status.Conditions) == 0 {
-		condition.Type = workloadv1alpha1.Reconciling
-		condition.Status = apiv1.ConditionFalse
+		condition.Type = string(workloadv1alpha1.Reconciling)
+		condition.Status = metav1.ConditionFalse
 		condition.Reason = "MinimumReplicasNotAvailable"
 		condition.Message = "UPFDeployment pod(s) is(are) starting."
 		condition.LastTransitionTime = metav1.Now()
-		condition.LastProbeTime = metav1.Now()
 
 		status.Conditions = append(status.Conditions, condition)
 
@@ -376,7 +392,7 @@ func calculateStatus(deployment *appsv1.Deployment, upfDeploy *workloadv1alpha1.
 	lastUPFDeploymentStatus := upfDeploy.Status.Conditions[len(upfDeploy.Status.Conditions)-1]
 
 	// Deployemnt and UPFDeployment have different names for processing state, hence we check if one is processing another is reconciling, then state is equal
-	if lastDeploymentStatus.Type == appsv1.DeploymentProgressing && lastUPFDeploymentStatus.Type == workloadv1alpha1.Reconciling {
+	if lastDeploymentStatus.Type == appsv1.DeploymentProgressing && lastUPFDeploymentStatus.Type == string(workloadv1alpha1.Reconciling) {
 		return status, false
 	}
 
@@ -386,28 +402,24 @@ func calculateStatus(deployment *appsv1.Deployment, upfDeploy *workloadv1alpha1.
 	}
 
 	condition.LastTransitionTime = lastDeploymentStatus.DeepCopy().LastTransitionTime
-	condition.LastProbeTime = lastDeploymentStatus.DeepCopy().LastUpdateTime
 	if lastDeploymentStatus.Type == appsv1.DeploymentAvailable {
-		condition.Type = workloadv1alpha1.Available
-		condition.Status = apiv1.ConditionTrue
+		condition.Type = string(workloadv1alpha1.Available)
+		condition.Status = metav1.ConditionTrue
 		condition.Reason = "MinimumReplicasAvailable"
 		condition.Message = "UPFDeployment pods are available."
 		condition.LastTransitionTime = metav1.Now()
-		condition.LastProbeTime = metav1.Now()
 	} else if lastDeploymentStatus.Type == appsv1.DeploymentProgressing {
-		condition.Type = workloadv1alpha1.Reconciling
-		condition.Status = apiv1.ConditionFalse
+		condition.Type = string(workloadv1alpha1.Reconciling)
+		condition.Status = metav1.ConditionFalse
 		condition.Reason = "MinimumReplicasNotAvailable"
 		condition.Message = "UPFDeployment pod(s) is(are) starting."
 		condition.LastTransitionTime = metav1.Now()
-		condition.LastProbeTime = metav1.Now()
 	} else if lastDeploymentStatus.Type == appsv1.DeploymentReplicaFailure {
-		condition.Type = workloadv1alpha1.Stalled
-		condition.Status = apiv1.ConditionFalse
+		condition.Type = string(workloadv1alpha1.Stalled)
+		condition.Status = metav1.ConditionFalse
 		condition.Reason = "MinimumReplicasNotAvailable"
 		condition.Message = "UPFDeployment pod(s) is(are) failing."
 		condition.LastTransitionTime = metav1.Now()
-		condition.LastProbeTime = metav1.Now()
 	}
 
 	status.Conditions = append(status.Conditions, condition)
@@ -479,34 +491,34 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// Add a finilizer to upfdeployment during create.
 	// If upfdeployemnt set to be deleted, finilazer is removed only after underlying configmap and deployment objects are gone
-	UPFDeploymentFinalizer := "upfdeployment.5gcore.workload.nephio.org/finalizer"
-	if upfDeploy.ObjectMeta.DeletionTimestamp.IsZero() {
-		if !controllerutil.ContainsFinalizer(upfDeploy, UPFDeploymentFinalizer) {
-			controllerutil.AddFinalizer(upfDeploy, UPFDeploymentFinalizer)
-			if err := r.Client.Update(ctx, upfDeploy); err != nil {
-				return reconcile.Result{}, err
-			}
-		}
-	} else {
-		if controllerutil.ContainsFinalizer(upfDeploy, UPFDeploymentFinalizer) {
-			log.Info(fmt.Sprintf("Deleting UPF CofigMap and Deployment: %v\n", upfDeploy.ObjectMeta.Name))
-			if cmFound {
-				if err := r.Client.Delete(ctx, currConfigmap); err != nil {
-					return reconcile.Result{}, err
-				}
-			}
-			if dmFound {
-				if err := r.Client.Delete(ctx, currDeployment); err != nil {
-					return reconcile.Result{}, err
-				}
-			}
-			controllerutil.RemoveFinalizer(upfDeploy, UPFDeploymentFinalizer)
-			if err := r.Client.Update(ctx, upfDeploy); err != nil {
-				return reconcile.Result{}, err
-			}
-		}
-		return reconcile.Result{}, nil
-	}
+	// UPFDeploymentFinalizer := "upfdeployment.5gcore.workload.nephio.org/finalizer"
+	// if upfDeploy.ObjectMeta.DeletionTimestamp.IsZero() {
+	// 	if !controllerutil.ContainsFinalizer(upfDeploy, UPFDeploymentFinalizer) {
+	// 		controllerutil.AddFinalizer(upfDeploy, UPFDeploymentFinalizer)
+	// 		if err := r.Client.Update(ctx, upfDeploy); err != nil {
+	// 			return reconcile.Result{}, err
+	// 		}
+	// 	}
+	// } else {
+	// 	if controllerutil.ContainsFinalizer(upfDeploy, UPFDeploymentFinalizer) {
+	// 		log.Info(fmt.Sprintf("Deleting UPF CofigMap and Deployment: %v\n", upfDeploy.ObjectMeta.Name))
+	// 		if cmFound {
+	// 			if err := r.Client.Delete(ctx, currConfigmap); err != nil {
+	// 				return reconcile.Result{}, err
+	// 			}
+	// 		}
+	// 		if dmFound {
+	// 			if err := r.Client.Delete(ctx, currDeployment); err != nil {
+	// 				return reconcile.Result{}, err
+	// 			}
+	// 		}
+	// 		controllerutil.RemoveFinalizer(upfDeploy, UPFDeploymentFinalizer)
+	// 		if err := r.Client.Update(ctx, upfDeploy); err != nil {
+	// 			return reconcile.Result{}, err
+	// 		}
+	// 	}
+	// 	return reconcile.Result{}, nil
+	// }
 
 	// first set up the configmap
 	if cm, err := free5gcUPFCreateConfigmap(log, upfDeploy); err != nil {
@@ -515,6 +527,10 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	} else {
 		if !cmFound {
 			log.Info("Creating UPFDeployment configmap", "UPFDeployment.namespace", namespace, "Confirmap.name", cm.ObjectMeta.Name)
+			// Set the controller reference, specifying that UPFDeployment controling underlying deployment
+			if err := ctrl.SetControllerReference(upfDeploy, cm, r.Scheme); err != nil {
+				log.Error(err, "Got error while setting Owner reference on configmap.", "UPFDeployment.namespace", namespace)
+			}
 			if err := r.Client.Create(ctx, cm); err != nil {
 				log.Error(err, fmt.Sprintf("Error: failed to create configmap %s\n", err.Error()))
 				return reconcile.Result{}, err
@@ -534,7 +550,7 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			} else {
 				// Set the controller reference, specifying that UPFDeployment controling underlying deployment
 				if err := ctrl.SetControllerReference(upfDeploy, deployment, r.Scheme); err != nil {
-					log.Error(err, "Got error while setting Owner reference.", "UPFDeployment.namespace", namespace)
+					log.Error(err, "Got error while setting Owner reference on deployment.", "UPFDeployment.namespace", namespace)
 				}
 				// log.Info(fmt.Sprintf("%+v", deployment.GetOwnerReferences()))
 				log.Info("Creating UPFDeployment", "UPFDeployment.namespace", namespace, "UPFDeployment.name", upfDeploy.Name)
@@ -550,5 +566,6 @@ func (r *UPFDeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&workloadv1alpha1.UPFDeployment{}).
 		Owns(&appsv1.Deployment{}).
+		Owns(&apiv1.ConfigMap{}).
 		Complete(r)
 }

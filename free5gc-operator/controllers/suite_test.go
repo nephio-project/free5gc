@@ -30,7 +30,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	workloadv1alpha1 "github.com/nephio-project/free5gc/api/v1alpha1"
+	workloadv1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )
 

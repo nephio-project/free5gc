@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"context"
 	"html/template"
-	"net"
 	"reflect"
 	"testing"
 
@@ -30,32 +29,42 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	workloadv1alpha1 "github.com/nephio-project/free5gc/api/v1alpha1"
+	workloadv1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
+	nephioreqv1alpha1 "github.com/nephio-project/api/nf_requirements/v1alpha1"
 )
 
 func newNxInterface(name string) workloadv1alpha1.InterfaceConfig {
 	switch name {
 	case "n3":
+		gw := "10.10.10.1"
 		n3int := workloadv1alpha1.InterfaceConfig{
-			Name:       "N3",
-			IPs:        []string{"10.10.10.10/24"},
-			GatewayIPs: []string{"10.10.10.1"},
+			Name: "N3",
+			IPv4: &workloadv1alpha1.IPv4{
+				Address: "10.10.10.10/24",
+				Gateway: &gw,
+			},
 		}
 		return n3int
 
 	case "n4":
+		gw := "10.10.10.1"
 		n4int := workloadv1alpha1.InterfaceConfig{
-			Name:       "N4",
-			IPs:        []string{"10.10.11.10/24"},
-			GatewayIPs: []string{"10.10.11.1"},
+			Name: "N4",
+			IPv4: &workloadv1alpha1.IPv4{
+				Address: "10.10.11.10/24",
+				Gateway: &gw,
+			},
 		}
 		return n4int
 
 	case "n6":
+		gw := "10.10.12.1"
 		n6int := workloadv1alpha1.InterfaceConfig{
-			Name:       "N6",
-			IPs:        []string{"10.10.12.10/24"},
-			GatewayIPs: []string{"10.10.12.1"},
+			Name: "N4",
+			IPv4: &workloadv1alpha1.IPv4{
+				Address: "10.10.12.10/24",
+				Gateway: &gw,
+			},
 		}
 		return n6int
 	}
@@ -63,13 +72,14 @@ func newNxInterface(name string) workloadv1alpha1.InterfaceConfig {
 }
 
 func newUpfDeployInstance(name string) *workloadv1alpha1.UPFDeployment {
-	capacity := resource.NewQuantity(10*1000*1000*1000, resource.DecimalSI)
-
-	n6intCfg := workloadv1alpha1.N6InterfaceConfig{
-		Interface: newNxInterface("n6"),
-		DNN:       "apn-test",
-		UEIPPool:  "100.100.0.0/16",
-	}
+	interfaces := []workloadv1alpha1.InterfaceConfig{}
+	n6int := newNxInterface("n6")
+	n3int := newNxInterface("n3")
+	n4int := newNxInterface("n4")
+	interfaces = append(interfaces, n6int)
+	interfaces = append(interfaces, n3int)
+	interfaces = append(interfaces, n4int)
+	dnnName := "apn-test"
 
 	upfDeployInstance := &workloadv1alpha1.UPFDeployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -77,18 +87,36 @@ func newUpfDeployInstance(name string) *workloadv1alpha1.UPFDeployment {
 			Namespace: name + "-ns",
 		},
 		Spec: workloadv1alpha1.UPFDeploymentSpec{
-			Capacity: workloadv1alpha1.UPFCapacity{
-				UplinkThroughput:   *capacity,
-				DownlinkThroughput: *capacity,
-			},
-			N3Interfaces: []workloadv1alpha1.InterfaceConfig{
-				newNxInterface("n3"),
-			},
-			N4Interfaces: []workloadv1alpha1.InterfaceConfig{
-				newNxInterface("n4"),
-			},
-			N6Interfaces: []workloadv1alpha1.N6InterfaceConfig{
-				n6intCfg,
+			NFDeploymentSpec: workloadv1alpha1.NFDeploymentSpec{
+				ConfigRefs: []apiv1.ObjectReference{},
+				Capacity: &nephioreqv1alpha1.CapacitySpec{
+					MaxUplinkThroughput:   resource.MustParse("1G"),
+					MaxDownlinkThroughput: resource.MustParse("5G"),
+					MaxSessions:           1000,
+					MaxSubscribers:        1000,
+					MaxNFConnections:      2000,
+				},
+				Interfaces: interfaces,
+				NetworkInstances: []workloadv1alpha1.NetworkInstance{
+					{
+						Name: "internet",
+						Interfaces: []string{
+							"n6-1",
+						},
+						DataNetworks: []workloadv1alpha1.DataNetwork{
+							{
+								Name: &dnnName,
+								Pool: []workloadv1alpha1.Pool{
+									{
+										Prefix: "100.100.0.0/16",
+									},
+								},
+							},
+						},
+						// BGP:   nil,
+						// Peers: []workloadv1alpha1.PeerConfig{},
+					},
+				},
 			},
 		},
 	}
@@ -96,40 +124,37 @@ func newUpfDeployInstance(name string) *workloadv1alpha1.UPFDeployment {
 	return upfDeployInstance
 }
 
-func newUpfDeploymentSpec() *workloadv1alpha1.UPFDeploymentSpec {
-	capacity := resource.NewQuantity(10*1000*1000*1000, resource.DecimalSI)
+// func newUpfDeploymentSpec() *workloadv1alpha1.UPFDeploymentSpec {
+// 	capacity := resource.NewQuantity(10*1000*1000*1000, resource.DecimalSI)
 
-	n6intCfg := workloadv1alpha1.N6InterfaceConfig{
-		Interface: newNxInterface("n6"),
-		DNN:       "apn-test",
-		UEIPPool:  "100.100.0.0/16",
-	}
-	upfDeploySpec := &workloadv1alpha1.UPFDeploymentSpec{
-		Capacity: workloadv1alpha1.UPFCapacity{
-			UplinkThroughput:   *capacity,
-			DownlinkThroughput: *capacity,
-		},
-		N3Interfaces: []workloadv1alpha1.InterfaceConfig{
-			newNxInterface("n3"),
-		},
-		N4Interfaces: []workloadv1alpha1.InterfaceConfig{
-			newNxInterface("n4"),
-		},
-		N6Interfaces: []workloadv1alpha1.N6InterfaceConfig{
-			n6intCfg,
-		},
-	}
+// 	n6intCfg := workloadv1alpha1.N6InterfaceConfig{
+// 		Interface: newNxInterface("n6"),
+// 		DNN:       "apn-test",
+// 		UEIPPool:  "100.100.0.0/16",
+// 	}
+// 	upfDeploySpec := &workloadv1alpha1.UPFDeploymentSpec{
+// 		Capacity: workloadv1alpha1.UPFCapacity{
+// 			UplinkThroughput:   *capacity,
+// 			DownlinkThroughput: *capacity,
+// 		},
+// 		N3Interfaces: []workloadv1alpha1.InterfaceConfig{
+// 			newNxInterface("n3"),
+// 		},
+// 		N4Interfaces: []workloadv1alpha1.InterfaceConfig{
+// 			newNxInterface("n4"),
+// 		},
+// 		N6Interfaces: []workloadv1alpha1.N6InterfaceConfig{
+// 			n6intCfg,
+// 		},
+// 	}
 
-	return upfDeploySpec
-}
+// 	return upfDeploySpec
+// }
 
 func TestGetResourceParams(t *testing.T) {
-	capacity := resource.NewQuantity(10*1000*1000*1000, resource.DecimalSI)
-	UPFCapacity := workloadv1alpha1.UPFCapacity{
-		UplinkThroughput:   *capacity,
-		DownlinkThroughput: *capacity,
-	}
-	replicas, got, err := getResourceParams(UPFCapacity)
+	upfDeploymentInstance := newUpfDeployInstance("test-upf-deployment")
+
+	replicas, got, err := getResourceParams(upfDeploymentInstance.Spec)
 	if err != nil {
 		t.Errorf("getResourceParams() returned unexpected error %v", err)
 	}
@@ -148,7 +173,7 @@ func TestGetResourceParams(t *testing.T) {
 		},
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("getResourceParams(%+v) returned %+v, want %+v", UPFCapacity, got, want)
+		t.Errorf("getResourceParams(%+v) returned %+v, want %+v", upfDeploymentInstance.Spec, got, want)
 	}
 }
 
@@ -169,8 +194,8 @@ func TestConstructNadName(t *testing.T) {
 }
 
 func TestGetNad(t *testing.T) {
-	upfDeploymentSpec := newUpfDeploymentSpec()
-	got := getNad("test-upf-deployment", upfDeploymentSpec)
+	upfDeploymentInstance := newUpfDeployInstance("test-upf-deployment")
+	got := getNad("test-upf-deployment", &upfDeploymentInstance.DeepCopy().Spec)
 
 	want := `[
         {"name": "test-upf-deployment-n3",
@@ -191,7 +216,7 @@ func TestGetNad(t *testing.T) {
     ]`
 
 	if got != want {
-		t.Errorf("getNad(%v) returned %v, want %v", upfDeploymentSpec, got, want)
+		t.Errorf("getNad(%v) returned %v, want %v", upfDeploymentInstance.Spec, got, want)
 	}
 }
 
@@ -203,13 +228,14 @@ func TestFree5gcUPFCreateConfigmap(t *testing.T) {
 		t.Errorf("free5gcUPFCreateConfigmap() returned unexpected error %v", err)
 	}
 
-	n4IP, _, _ := net.ParseCIDR(upfDeploymentInstance.Spec.N4Interfaces[0].IPs[0])
-	n3IP, _, _ := net.ParseCIDR(upfDeploymentInstance.Spec.N3Interfaces[0].IPs[0])
+	n4IP, _ := getIPv4(upfDeploymentInstance.Spec.Interfaces, "N4")
+	n3IP, _ := getIPv4(upfDeploymentInstance.Spec.Interfaces, "N3")
 
 	upfcfgStruct := UPFcfgStruct{}
-	upfcfgStruct.PFCP_IP = n4IP.String()
-	upfcfgStruct.GTPU_IP = n3IP.String()
-	upfcfgStruct.N6cfg = upfDeploymentInstance.Spec.N6Interfaces
+	upfcfgStruct.PFCP_IP = n4IP
+	upfcfgStruct.GTPU_IP = n3IP
+	n6Cfg := getIntConfigSlice(upfDeploymentInstance.Spec.Interfaces, "N6")
+	upfcfgStruct.N6cfg = n6Cfg
 
 	upfcfgTemplate := template.New("UPFCfg")
 	upfcfgTemplate, err = upfcfgTemplate.Parse(UPFCfgTemplate)
@@ -255,24 +281,22 @@ func TestCaclculasteStatusFirstReconcile(t *testing.T) {
 	upfDeploymentInstance := newUpfDeployInstance("test-upf-deployment")
 	deployment := &appsv1.Deployment{}
 
-	want := workloadv1alpha1.UPFDeploymentStatus{
+	want := workloadv1alpha1.NFDeploymentStatus{
 		ObservedGeneration: int32(deployment.Generation),
 		Conditions:         upfDeploymentInstance.Status.Conditions,
 	}
 
-	condition := workloadv1alpha1.NFCondition{}
-	condition.Type = workloadv1alpha1.Reconciling
-	condition.Status = apiv1.ConditionFalse
+	condition := metav1.Condition{}
+	condition.Type = string(workloadv1alpha1.Reconciling)
+	condition.Status = metav1.ConditionFalse
 	condition.Reason = "MinimumReplicasNotAvailable"
 	condition.Message = "UPFDeployment pod(s) is(are) starting."
 	// condition.LastTransitionTime = metav1.Now()
-	// condition.LastProbeTime = metav1.Now()
 	want.Conditions = append(want.Conditions, condition)
 
 	got, b := calculateStatus(deployment, upfDeploymentInstance)
 
 	gotCondition := got.Conditions[0]
-	gotCondition.LastProbeTime = metav1.Time{}
 	gotCondition.LastTransitionTime = metav1.Time{}
 
 	if !reflect.DeepEqual(gotCondition, condition) {
@@ -287,13 +311,12 @@ func TestCaclculasteStatusDeployemntNotReady(t *testing.T) {
 	upfDeploymentInstance := newUpfDeployInstance("test-upf-deployment")
 	deployment := &appsv1.Deployment{}
 
-	condition := workloadv1alpha1.NFCondition{}
-	condition.Type = workloadv1alpha1.Reconciling
-	condition.Status = apiv1.ConditionFalse
+	condition := metav1.Condition{}
+	condition.Type = string(workloadv1alpha1.Reconciling)
+	condition.Status = metav1.ConditionFalse
 	condition.Reason = "MinimumReplicasNotAvailable"
 	condition.Message = "UPFDeployment pod(s) is(are) starting."
 	condition.LastTransitionTime = metav1.Now()
-	condition.LastProbeTime = metav1.Now()
 	upfDeploymentInstance.Status.Conditions = append(upfDeploymentInstance.Status.Conditions, condition)
 
 	want := upfDeploymentInstance.Status
@@ -312,8 +335,8 @@ func TestCaclculasteStatusProcessing(t *testing.T) {
 	upfDeploymentInstance := newUpfDeployInstance("test-upf-deployment")
 	deployment := &appsv1.Deployment{}
 
-	condition := workloadv1alpha1.NFCondition{}
-	condition.Type = workloadv1alpha1.Reconciling
+	condition := metav1.Condition{}
+	condition.Type = string(workloadv1alpha1.Reconciling)
 	deploymentCondition := &appsv1.DeploymentCondition{}
 	deploymentCondition.Type = appsv1.DeploymentProgressing
 	upfDeploymentInstance.Status.Conditions = append(upfDeploymentInstance.Status.Conditions, condition)
@@ -335,8 +358,8 @@ func TestCaclculasteStatusAvailable(t *testing.T) {
 	upfDeploymentInstance := newUpfDeployInstance("test-upf-deployment")
 	deployment := &appsv1.Deployment{}
 
-	condition := workloadv1alpha1.NFCondition{}
-	condition.Type = workloadv1alpha1.Available
+	condition := metav1.Condition{}
+	condition.Type = string(workloadv1alpha1.Available)
 	deploymentCondition := &appsv1.DeploymentCondition{}
 	deploymentCondition.Type = appsv1.DeploymentAvailable
 	upfDeploymentInstance.Status.Conditions = append(upfDeploymentInstance.Status.Conditions, condition)
@@ -358,9 +381,9 @@ func TestCaclculasteStatusDeploymentAvailable(t *testing.T) {
 	upfDeploymentInstance := newUpfDeployInstance("test-upf-deployment")
 	deployment := &appsv1.Deployment{}
 
-	condition := workloadv1alpha1.NFCondition{}
-	condition.Type = workloadv1alpha1.Reconciling
-	condition.Status = apiv1.ConditionFalse
+	condition := metav1.Condition{}
+	condition.Type = string(workloadv1alpha1.Reconciling)
+	condition.Status = metav1.ConditionFalse
 	condition.Reason = "MinimumReplicasNotAvailable"
 	condition.Message = "UPFDeployment pod(s) is(are) starting."
 	deploymentCondition := &appsv1.DeploymentCondition{}
@@ -370,8 +393,8 @@ func TestCaclculasteStatusDeploymentAvailable(t *testing.T) {
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
 	want := upfDeploymentInstance.Status
-	condition.Type = workloadv1alpha1.Available
-	condition.Status = apiv1.ConditionTrue
+	condition.Type = string(workloadv1alpha1.Available)
+	condition.Status = metav1.ConditionTrue
 	condition.Reason = "MinimumReplicasAvailable"
 	condition.Message = "UPFDeployment pods are available."
 	want.Conditions = append(want.Conditions, condition)
@@ -379,7 +402,6 @@ func TestCaclculasteStatusDeploymentAvailable(t *testing.T) {
 	got, b := calculateStatus(deployment, upfDeploymentInstance)
 
 	gotCondition := got.Conditions[1]
-	gotCondition.LastProbeTime = metav1.Time{}
 	gotCondition.LastTransitionTime = metav1.Time{}
 	got.Conditions = got.Conditions[:len(got.Conditions)-1]
 	got.Conditions = append(got.Conditions, gotCondition)
@@ -396,9 +418,9 @@ func TestCaclculasteStatusDeploymentProcessing(t *testing.T) {
 	upfDeploymentInstance := newUpfDeployInstance("test-upf-deployment")
 	deployment := &appsv1.Deployment{}
 
-	condition := workloadv1alpha1.NFCondition{}
-	condition.Type = workloadv1alpha1.Available
-	condition.Status = apiv1.ConditionTrue
+	condition := metav1.Condition{}
+	condition.Type = string(workloadv1alpha1.Available)
+	condition.Status = metav1.ConditionTrue
 	condition.Reason = "MinimumReplicasAvailable"
 	condition.Message = "UPFDeployment pods are available"
 	deploymentCondition := &appsv1.DeploymentCondition{}
@@ -407,8 +429,8 @@ func TestCaclculasteStatusDeploymentProcessing(t *testing.T) {
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
 	want := upfDeploymentInstance.Status
-	condition.Type = workloadv1alpha1.Reconciling
-	condition.Status = apiv1.ConditionFalse
+	condition.Type = string(workloadv1alpha1.Reconciling)
+	condition.Status = metav1.ConditionFalse
 	condition.Reason = "MinimumReplicasNotAvailable"
 	condition.Message = "UPFDeployment pod(s) is(are) starting."
 	want.Conditions = append(want.Conditions, condition)
@@ -416,7 +438,6 @@ func TestCaclculasteStatusDeploymentProcessing(t *testing.T) {
 	got, b := calculateStatus(deployment, upfDeploymentInstance)
 
 	gotCondition := got.Conditions[1]
-	gotCondition.LastProbeTime = metav1.Time{}
 	gotCondition.LastTransitionTime = metav1.Time{}
 	got.Conditions = got.Conditions[:len(got.Conditions)-1]
 	got.Conditions = append(got.Conditions, gotCondition)
@@ -433,9 +454,9 @@ func TestCaclculasteStatusReplicaFailure(t *testing.T) {
 	upfDeploymentInstance := newUpfDeployInstance("test-upf-deployment")
 	deployment := &appsv1.Deployment{}
 
-	condition := workloadv1alpha1.NFCondition{}
-	condition.Type = workloadv1alpha1.Available
-	condition.Status = apiv1.ConditionTrue
+	condition := metav1.Condition{}
+	condition.Type = string(workloadv1alpha1.Available)
+	condition.Status = metav1.ConditionTrue
 	condition.Reason = "MinimumReplicasAvailable"
 	condition.Message = "UPFDeployment pods are available"
 	deploymentCondition := &appsv1.DeploymentCondition{}
@@ -444,8 +465,8 @@ func TestCaclculasteStatusReplicaFailure(t *testing.T) {
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
 	want := upfDeploymentInstance.Status
-	condition.Type = workloadv1alpha1.Stalled
-	condition.Status = apiv1.ConditionFalse
+	condition.Type = string(workloadv1alpha1.Stalled)
+	condition.Status = metav1.ConditionFalse
 	condition.Reason = "MinimumReplicasNotAvailable"
 	condition.Message = "UPFDeployment pod(s) is(are) failing."
 	want.Conditions = append(want.Conditions, condition)
@@ -453,7 +474,6 @@ func TestCaclculasteStatusReplicaFailure(t *testing.T) {
 	got, b := calculateStatus(deployment, upfDeploymentInstance)
 
 	gotCondition := got.Conditions[1]
-	gotCondition.LastProbeTime = metav1.Time{}
 	gotCondition.LastTransitionTime = metav1.Time{}
 	got.Conditions = got.Conditions[:len(got.Conditions)-1]
 	got.Conditions = append(got.Conditions, gotCondition)
@@ -469,42 +489,71 @@ func TestCaclculasteStatusReplicaFailure(t *testing.T) {
 func TestFree5gcUPFCreateConfigmapMultipleDNNs(t *testing.T) {
 	log := log.FromContext(context.TODO())
 	upfDeploymentInstance := newUpfDeployInstance("test-upf-deployment")
-	n6intConfig1 := workloadv1alpha1.InterfaceConfig{
-		Name:       "N6",
-		IPs:        []string{"100.100.0.10"},
-		GatewayIPs: []string{"100.100.0.1"},
+	gw1 := "100.100.0.1"
+	gw2 := "200.200.0.1"
+	n6int1 := workloadv1alpha1.InterfaceConfig{
+		Name: "N6",
+		IPv4: &workloadv1alpha1.IPv4{
+			Address: "100.100.0.10",
+			Gateway: &gw1,
+		},
 	}
-	n6intConfig2 := workloadv1alpha1.InterfaceConfig{
-		Name:       "N6",
-		IPs:        []string{"200.200.0.10"},
-		GatewayIPs: []string{"200.200.0.1"},
+	n6int2 := workloadv1alpha1.InterfaceConfig{
+		Name: "N6",
+		IPv4: &workloadv1alpha1.IPv4{
+			Address: "200.200.0.10",
+			Gateway: &gw2,
+		},
 	}
-	n6int1 := workloadv1alpha1.N6InterfaceConfig{
-		Interface: n6intConfig1,
-		DNN:       "apn-test",
-		UEIPPool:  "100.100.0.0/16",
+	apn1 := "apn-test"
+	apn2 := "internet"
+	networkInstance1 := workloadv1alpha1.NetworkInstance{
+		Name: "N6-1",
+		DataNetworks: []workloadv1alpha1.DataNetwork{
+			{
+				Name: &apn1,
+				Pool: []workloadv1alpha1.Pool{
+					{
+						Prefix: "100.100.0.0/16",
+					},
+				},
+			},
+		},
 	}
-	n6int2 := workloadv1alpha1.N6InterfaceConfig{
-		Interface: n6intConfig2,
-		DNN:       "internet",
-		UEIPPool:  "200.200.0.0/16",
+	networkInstance2 := workloadv1alpha1.NetworkInstance{
+		Name: "N6-2",
+		DataNetworks: []workloadv1alpha1.DataNetwork{
+			{
+				Name: &apn2,
+				Pool: []workloadv1alpha1.Pool{
+					{
+						Prefix: "200.200.0.0/16",
+					},
+				},
+			},
+		},
 	}
-	n6Interfaces := []workloadv1alpha1.N6InterfaceConfig{
+	interfaces := []workloadv1alpha1.InterfaceConfig{
 		n6int1, n6int2,
 	}
-	upfDeploymentInstance.Spec.N6Interfaces = n6Interfaces
+	networkInstances := []workloadv1alpha1.NetworkInstance{
+		networkInstance1, networkInstance2,
+	}
+	upfDeploymentInstance.Spec.Interfaces = interfaces
+	upfDeploymentInstance.Spec.NetworkInstances = networkInstances
 	got, err := free5gcUPFCreateConfigmap(log, upfDeploymentInstance)
 	if err != nil {
 		t.Errorf("free5gcUPFCreateConfigmap() returned unexpected error %v", err)
 	}
 
-	n4IP, _, _ := net.ParseCIDR(upfDeploymentInstance.Spec.N4Interfaces[0].IPs[0])
-	n3IP, _, _ := net.ParseCIDR(upfDeploymentInstance.Spec.N3Interfaces[0].IPs[0])
+	n4IP, _ := getIPv4(upfDeploymentInstance.Spec.Interfaces, "N4")
+	n3IP, _ := getIPv4(upfDeploymentInstance.Spec.Interfaces, "N3")
 
 	upfcfgStruct := UPFcfgStruct{}
-	upfcfgStruct.PFCP_IP = n4IP.String()
-	upfcfgStruct.GTPU_IP = n3IP.String()
-	upfcfgStruct.N6cfg = upfDeploymentInstance.Spec.N6Interfaces
+	upfcfgStruct.PFCP_IP = n4IP
+	upfcfgStruct.GTPU_IP = n3IP
+	n6Cfg := getIntConfigSlice(upfDeploymentInstance.Spec.Interfaces, "N6")
+	upfcfgStruct.N6cfg = n6Cfg
 
 	upfcfgTemplate := template.New("UPFCfg")
 	upfcfgTemplate, err = upfcfgTemplate.Parse(UPFCfgTemplate)
