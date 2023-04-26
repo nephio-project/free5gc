@@ -147,3 +147,49 @@ func TestGetIPv4NotFound(t *testing.T) {
 		t.Errorf("getIPv4(%v, \"N3\") returned %v, want %v", interfaces, got, "")
 	}
 }
+
+func TestGetNetworkInsance(t *testing.T) {
+	upfDeployment := newUpfDeployInstance("test-upf-deployment")
+
+	apn := "apn-test"
+	ns := workloadv1alpha1.NetworkInstance{
+		Name: "vpc-internet",
+		Interfaces: []string{
+			"N6",
+		},
+		DataNetworks: []workloadv1alpha1.DataNetwork{
+			{
+				Name: &apn,
+				Pool: []workloadv1alpha1.Pool{
+					{
+						Prefix: "100.100.0.0/16",
+					},
+				},
+			},
+		},
+		BGP:   nil,
+		Peers: []workloadv1alpha1.PeerConfig{},
+	}
+	want := []workloadv1alpha1.NetworkInstance{
+		ns,
+	}
+
+	got, b := getNetworkInsance(upfDeployment.Spec, "N6")
+
+	if b != true {
+		t.Errorf("getNetworkInstance(%+v, \"N6\") returned %v, want %v", upfDeployment.Spec, got, want)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("getNetworkInstance(%+v, \"N6\") returned %+v, want %+v", upfDeployment.Spec, got, want)
+	}
+}
+
+func TestGetNetworkInsanceNoInstance(t *testing.T) {
+	upfDeployment := newUpfDeployInstance("test-upf-deployment")
+
+	_, b := getNetworkInsance(upfDeployment.Spec, "N6-1")
+
+	if b != false {
+		t.Errorf("getNetworkInstance(%+v, \"N6-1\") returned %v, want %v", upfDeployment.Spec, b, false)
+	}
+}

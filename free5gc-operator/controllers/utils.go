@@ -17,7 +17,6 @@ limitations under the License.
 package controllers
 
 import (
-	"errors"
 	"fmt"
 	"net"
 
@@ -41,7 +40,7 @@ func getIntConfig(interfaces []workloadv1alpha1.InterfaceConfig, interfaceName s
 			return &intf, nil
 		}
 	}
-	return nil, errors.New(fmt.Sprintf("Interface %s not found in NFDeployment Spec", interfaceName))
+	return nil, fmt.Errorf("Interface %s not found in NFDeployment Spec", interfaceName)
 }
 
 func getIPv4(interfaces []workloadv1alpha1.InterfaceConfig, interfaceName string) (string, error) {
@@ -52,4 +51,21 @@ func getIPv4(interfaces []workloadv1alpha1.InterfaceConfig, interfaceName string
 	ip, _, _ := net.ParseCIDR(interfaceConfig.IPv4.Address)
 
 	return ip.String(), nil
+}
+
+func getNetworkInsance(upfspec workloadv1alpha1.UPFDeploymentSpec, interfaceName string) ([]workloadv1alpha1.NetworkInstance, bool) {
+	ret := []workloadv1alpha1.NetworkInstance{}
+	for _, netInstance := range upfspec.NetworkInstances {
+		for _, intf := range netInstance.Interfaces {
+			if intf == interfaceName {
+				ret = append(ret, netInstance)
+			}
+		}
+	}
+
+	if len(ret) == 0 {
+		return ret, false
+	}
+
+	return ret, true
 }

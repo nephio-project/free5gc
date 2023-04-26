@@ -13,11 +13,13 @@ configuration:
   ReportCaller: false
   debugLevel: info
   dnn_list:
-{{- range $dnn := .N6cfg }}
-  - cidr: {{ $dnn.UEIPPool }}
-    dnn: {{ $dnn.DNN }}
-    natifname: n6
-{{- end }}
+{{- range $netInstance := .N6cfg }}
+  {{- range $dnn := $netInstance.DataNetworks }}
+  - cidr: {{(index $dnn.Pool 0).Prefix}}
+    dnn: {{ $dnn.Name }}
+    natifname: {{index $netInstance.Interfaces 0}}
+  {{- end }}
+{{- end}}
   pfcp:
     - addr: {{ .PFCP_IP }}
 

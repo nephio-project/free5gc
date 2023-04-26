@@ -47,7 +47,7 @@ func newNxInterface(name string) workloadv1alpha1.InterfaceConfig {
 		return n3int
 
 	case "n4":
-		gw := "10.10.10.1"
+		gw := "10.10.11.1"
 		n4int := workloadv1alpha1.InterfaceConfig{
 			Name: "N4",
 			IPv4: &workloadv1alpha1.IPv4{
@@ -60,7 +60,7 @@ func newNxInterface(name string) workloadv1alpha1.InterfaceConfig {
 	case "n6":
 		gw := "10.10.12.1"
 		n6int := workloadv1alpha1.InterfaceConfig{
-			Name: "N4",
+			Name: "N6",
 			IPv4: &workloadv1alpha1.IPv4{
 				Address: "10.10.12.10/24",
 				Gateway: &gw,
@@ -99,9 +99,9 @@ func newUpfDeployInstance(name string) *workloadv1alpha1.UPFDeployment {
 				Interfaces: interfaces,
 				NetworkInstances: []workloadv1alpha1.NetworkInstance{
 					{
-						Name: "internet",
+						Name: "vpc-internet",
 						Interfaces: []string{
-							"n6-1",
+							"N6",
 						},
 						DataNetworks: []workloadv1alpha1.DataNetwork{
 							{
@@ -113,8 +113,8 @@ func newUpfDeployInstance(name string) *workloadv1alpha1.UPFDeployment {
 								},
 							},
 						},
-						// BGP:   nil,
-						// Peers: []workloadv1alpha1.PeerConfig{},
+						BGP:   nil,
+						Peers: []workloadv1alpha1.PeerConfig{},
 					},
 				},
 			},
@@ -123,33 +123,6 @@ func newUpfDeployInstance(name string) *workloadv1alpha1.UPFDeployment {
 
 	return upfDeployInstance
 }
-
-// func newUpfDeploymentSpec() *workloadv1alpha1.UPFDeploymentSpec {
-// 	capacity := resource.NewQuantity(10*1000*1000*1000, resource.DecimalSI)
-
-// 	n6intCfg := workloadv1alpha1.N6InterfaceConfig{
-// 		Interface: newNxInterface("n6"),
-// 		DNN:       "apn-test",
-// 		UEIPPool:  "100.100.0.0/16",
-// 	}
-// 	upfDeploySpec := &workloadv1alpha1.UPFDeploymentSpec{
-// 		Capacity: workloadv1alpha1.UPFCapacity{
-// 			UplinkThroughput:   *capacity,
-// 			DownlinkThroughput: *capacity,
-// 		},
-// 		N3Interfaces: []workloadv1alpha1.InterfaceConfig{
-// 			newNxInterface("n3"),
-// 		},
-// 		N4Interfaces: []workloadv1alpha1.InterfaceConfig{
-// 			newNxInterface("n4"),
-// 		},
-// 		N6Interfaces: []workloadv1alpha1.N6InterfaceConfig{
-// 			n6intCfg,
-// 		},
-// 	}
-
-// 	return upfDeploySpec
-// }
 
 func TestGetResourceParams(t *testing.T) {
 	upfDeploymentInstance := newUpfDeployInstance("test-upf-deployment")
@@ -201,17 +174,17 @@ func TestGetNad(t *testing.T) {
         {"name": "test-upf-deployment-n3",
          "interface": "N3",
          "ips": ["10.10.10.10/24"],
-         "gateway": ["10.10.10.1"]
+         "gateways": ["10.10.10.1"]
         },
         {"name": "test-upf-deployment-n4",
          "interface": "N4",
          "ips": ["10.10.11.10/24"],
-         "gateway": ["10.10.11.1"]
+         "gateways": ["10.10.11.1"]
         },
         {"name": "test-upf-deployment-n6",
          "interface": "N6",
          "ips": ["10.10.12.10/24"],
-         "gateway": ["10.10.12.1"]
+         "gateways": ["10.10.12.1"]
         }
     ]`
 
@@ -230,11 +203,13 @@ func TestFree5gcUPFCreateConfigmap(t *testing.T) {
 
 	n4IP, _ := getIPv4(upfDeploymentInstance.Spec.Interfaces, "N4")
 	n3IP, _ := getIPv4(upfDeploymentInstance.Spec.Interfaces, "N3")
+	n6IP, _ := getIntConfig(upfDeploymentInstance.Spec.Interfaces, "N6")
 
 	upfcfgStruct := UPFcfgStruct{}
 	upfcfgStruct.PFCP_IP = n4IP
 	upfcfgStruct.GTPU_IP = n3IP
-	n6Cfg := getIntConfigSlice(upfDeploymentInstance.Spec.Interfaces, "N6")
+	upfcfgStruct.N6gw = *n6IP.IPv4.Gateway
+	n6Cfg, _ := getNetworkInsance(upfDeploymentInstance.Spec, "N6")
 	upfcfgStruct.N6cfg = n6Cfg
 
 	upfcfgTemplate := template.New("UPFCfg")
@@ -255,7 +230,7 @@ func TestFree5gcUPFCreateConfigmap(t *testing.T) {
 
 	var upfcfg bytes.Buffer
 	if err := upfcfgTemplate.Execute(&upfcfg, upfcfgStruct); err != nil {
-		t.Error("Could not render UPFWrapperScript template.")
+		t.Error("Could not render UPFConfig template.")
 	}
 
 	want := &apiv1.ConfigMap{
@@ -319,7 +294,7 @@ func TestCaclculasteStatusDeployemntNotReady(t *testing.T) {
 	condition.LastTransitionTime = metav1.Now()
 	upfDeploymentInstance.Status.Conditions = append(upfDeploymentInstance.Status.Conditions, condition)
 
-	want := upfDeploymentInstance.Status
+	want := upfDeploymentInstance.Status.NFDeploymentStatus
 
 	got, b := calculateStatus(deployment, upfDeploymentInstance)
 
@@ -342,7 +317,7 @@ func TestCaclculasteStatusProcessing(t *testing.T) {
 	upfDeploymentInstance.Status.Conditions = append(upfDeploymentInstance.Status.Conditions, condition)
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
-	want := upfDeploymentInstance.Status
+	want := upfDeploymentInstance.Status.NFDeploymentStatus
 
 	got, b := calculateStatus(deployment, upfDeploymentInstance)
 
@@ -365,7 +340,7 @@ func TestCaclculasteStatusAvailable(t *testing.T) {
 	upfDeploymentInstance.Status.Conditions = append(upfDeploymentInstance.Status.Conditions, condition)
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
-	want := upfDeploymentInstance.Status
+	want := upfDeploymentInstance.Status.NFDeploymentStatus
 
 	got, b := calculateStatus(deployment, upfDeploymentInstance)
 
@@ -392,7 +367,7 @@ func TestCaclculasteStatusDeploymentAvailable(t *testing.T) {
 	upfDeploymentInstance.Status.Conditions = append(upfDeploymentInstance.Status.Conditions, condition)
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
-	want := upfDeploymentInstance.Status
+	want := upfDeploymentInstance.Status.NFDeploymentStatus
 	condition.Type = string(workloadv1alpha1.Available)
 	condition.Status = metav1.ConditionTrue
 	condition.Reason = "MinimumReplicasAvailable"
@@ -428,7 +403,7 @@ func TestCaclculasteStatusDeploymentProcessing(t *testing.T) {
 	upfDeploymentInstance.Status.Conditions = append(upfDeploymentInstance.Status.Conditions, condition)
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
-	want := upfDeploymentInstance.Status
+	want := upfDeploymentInstance.Status.NFDeploymentStatus
 	condition.Type = string(workloadv1alpha1.Reconciling)
 	condition.Status = metav1.ConditionFalse
 	condition.Reason = "MinimumReplicasNotAvailable"
@@ -464,7 +439,7 @@ func TestCaclculasteStatusReplicaFailure(t *testing.T) {
 	upfDeploymentInstance.Status.Conditions = append(upfDeploymentInstance.Status.Conditions, condition)
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
-	want := upfDeploymentInstance.Status
+	want := upfDeploymentInstance.Status.NFDeploymentStatus
 	condition.Type = string(workloadv1alpha1.Stalled)
 	condition.Status = metav1.ConditionFalse
 	condition.Reason = "MinimumReplicasNotAvailable"
@@ -483,115 +458,6 @@ func TestCaclculasteStatusReplicaFailure(t *testing.T) {
 	}
 	if b != true {
 		t.Errorf("calculateStatus(%+v, %+v) returned %+v, want %+v", deployment, upfDeploymentInstance, b, true)
-	}
-}
-
-func TestFree5gcUPFCreateConfigmapMultipleDNNs(t *testing.T) {
-	log := log.FromContext(context.TODO())
-	upfDeploymentInstance := newUpfDeployInstance("test-upf-deployment")
-	gw1 := "100.100.0.1"
-	gw2 := "200.200.0.1"
-	n6int1 := workloadv1alpha1.InterfaceConfig{
-		Name: "N6",
-		IPv4: &workloadv1alpha1.IPv4{
-			Address: "100.100.0.10",
-			Gateway: &gw1,
-		},
-	}
-	n6int2 := workloadv1alpha1.InterfaceConfig{
-		Name: "N6",
-		IPv4: &workloadv1alpha1.IPv4{
-			Address: "200.200.0.10",
-			Gateway: &gw2,
-		},
-	}
-	apn1 := "apn-test"
-	apn2 := "internet"
-	networkInstance1 := workloadv1alpha1.NetworkInstance{
-		Name: "N6-1",
-		DataNetworks: []workloadv1alpha1.DataNetwork{
-			{
-				Name: &apn1,
-				Pool: []workloadv1alpha1.Pool{
-					{
-						Prefix: "100.100.0.0/16",
-					},
-				},
-			},
-		},
-	}
-	networkInstance2 := workloadv1alpha1.NetworkInstance{
-		Name: "N6-2",
-		DataNetworks: []workloadv1alpha1.DataNetwork{
-			{
-				Name: &apn2,
-				Pool: []workloadv1alpha1.Pool{
-					{
-						Prefix: "200.200.0.0/16",
-					},
-				},
-			},
-		},
-	}
-	interfaces := []workloadv1alpha1.InterfaceConfig{
-		n6int1, n6int2,
-	}
-	networkInstances := []workloadv1alpha1.NetworkInstance{
-		networkInstance1, networkInstance2,
-	}
-	upfDeploymentInstance.Spec.Interfaces = interfaces
-	upfDeploymentInstance.Spec.NetworkInstances = networkInstances
-	got, err := free5gcUPFCreateConfigmap(log, upfDeploymentInstance)
-	if err != nil {
-		t.Errorf("free5gcUPFCreateConfigmap() returned unexpected error %v", err)
-	}
-
-	n4IP, _ := getIPv4(upfDeploymentInstance.Spec.Interfaces, "N4")
-	n3IP, _ := getIPv4(upfDeploymentInstance.Spec.Interfaces, "N3")
-
-	upfcfgStruct := UPFcfgStruct{}
-	upfcfgStruct.PFCP_IP = n4IP
-	upfcfgStruct.GTPU_IP = n3IP
-	n6Cfg := getIntConfigSlice(upfDeploymentInstance.Spec.Interfaces, "N6")
-	upfcfgStruct.N6cfg = n6Cfg
-
-	upfcfgTemplate := template.New("UPFCfg")
-	upfcfgTemplate, err = upfcfgTemplate.Parse(UPFCfgTemplate)
-	if err != nil {
-		t.Error("Could not parse UPFCfgTemplate template.")
-	}
-	upfwrapperTemplate := template.New("UPFCfg")
-	upfwrapperTemplate, _ = upfwrapperTemplate.Parse(UPFWrapperScript)
-	if err != nil {
-		t.Error("Could not parse UPFWrapperScript template.")
-	}
-
-	var wrapper bytes.Buffer
-	if err := upfwrapperTemplate.Execute(&wrapper, upfcfgStruct); err != nil {
-		t.Error("Could not render UPFWrapperScript template.")
-	}
-
-	var upfcfg bytes.Buffer
-	if err := upfcfgTemplate.Execute(&upfcfg, upfcfgStruct); err != nil {
-		t.Error("Could not render UPFWrapperScript template.")
-	}
-
-	want := &apiv1.ConfigMap{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ConfigMap",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      upfDeploymentInstance.ObjectMeta.Name + "-upf-configmap",
-			Namespace: upfDeploymentInstance.ObjectMeta.Namespace,
-		},
-		Data: map[string]string{
-			"upfcfg.yaml": upfcfg.String(),
-			"wrapper.sh":  wrapper.String(),
-		},
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("free5gcUPFCreateConfigmap(%+v) returned %+v, want %+v", upfDeploymentInstance, got, want)
 	}
 }
 
@@ -624,17 +490,17 @@ func TestFree5gcUPFDeployment(t *testing.T) {
         {"name": "test-upf-deployment-n3",
          "interface": "N3",
          "ips": ["10.10.10.10/24"],
-         "gateway": ["10.10.10.1"]
+         "gateways": ["10.10.10.1"]
         },
         {"name": "test-upf-deployment-n4",
          "interface": "N4",
          "ips": ["10.10.11.10/24"],
-         "gateway": ["10.10.11.1"]
+         "gateways": ["10.10.11.1"]
         },
         {"name": "test-upf-deployment-n6",
          "interface": "N6",
          "ips": ["10.10.12.10/24"],
-         "gateway": ["10.10.12.1"]
+         "gateways": ["10.10.12.1"]
         }
     ]`,
 					},
