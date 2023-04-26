@@ -6,12 +6,7 @@ TEST_COVERAGE_HTML_FILE=coverage_unit.html
 TEST_COVERAGE_FUNC_FILE=func_coverage.out
 
 # CONTAINER_RUNNABLE checks if tests and lint check can be run inside container.
-PODMAN ?= $(shell podman -v > /dev/null 2>&1; echo $$?)
-ifeq ($(PODMAN), 0)
-CONTAINER_RUNTIME=podman
-else
-CONTAINER_RUNTIME=docker
-endif
+CONTAINER_RUNTIME ?= $(shell which podman 2> /dev/null || which docker 2> /dev/null || echo docker)
 CONTAINER_RUNNABLE ?= $(shell $(CONTAINER_RUNTIME) -v > /dev/null 2>&1; echo $$?)
 
 # Use microk8s if installed
