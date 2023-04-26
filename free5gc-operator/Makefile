@@ -171,6 +171,13 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | $(KUBECTL) apply -f -
 
+.PHONY: kind-deploy
+kind-deploy: manifests kind kustomize ko ## Deploy controller to the KinD cluster specified in KIND_CLUSTER_NAME.
+	$(KIND) create cluster || :
+	$(KUBECTL) apply -f "https://raw.githubusercontent.com/k8snetworkplumbingwg/multus-cni/$(MULTUS_CNI_VERSION)/deployments/multus-daemonset-thick-plugin.yml"
+	$(KUBECTL) rollout status daemonset/kube-multus-ds -n kube-system --timeout=3m
+	$(KUSTOMIZE) build config/default | KO_DOCKER_REPO=kind.local $(KO) apply -f -
+
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/default | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
@@ -188,12 +195,17 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 KPT ?= $(LOCALBIN)/kpt
 KPTGEN ?= $(LOCALBIN)/kptgen
+KO ?= $(LOCALBIN)/ko
+KIND ?= $(LOCALBIN)/kind
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v3.8.7
 CONTROLLER_TOOLS_VERSION ?= v0.9.2
 KPT_VERSION ?= main
 KPTGEN_VERSION ?= v0.0.9
+KO_VERSION ?= v0.13.0
+KIND_VERSION ?= v0.18.0
+MULTUS_CNI_VERSION ?= v3.9.3
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
@@ -220,3 +232,13 @@ $(KPT): $(LOCALBIN)
 kptgen: $(KPTGEN)
 $(KPTGEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/kptgen || GOBIN=$(LOCALBIN) go install -v github.com/henderiw-kpt/kptgen@$(KPTGEN_VERSION)
+
+.PHONY: ko
+ko: $(KO) ## Download ko locally if necessary.
+$(KO): $(LOCALBIN)
+	test -s $(LOCALBIN)/ko || GOBIN=$(LOCALBIN) go install -v github.com/google/ko@$(KO_VERSION)
+
+.PHONY: kind
+kind: $(KIND) ## Download kind locally if necessary.
+$(KIND): $(LOCALBIN)
+	test -s $(LOCALBIN)/kind || GOBIN=$(LOCALBIN) go install -v sigs.k8s.io/kind@$(KIND_VERSION)

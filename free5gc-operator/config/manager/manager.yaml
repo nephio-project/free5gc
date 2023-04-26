@@ -66,11 +66,9 @@ spec:
         # seccompProfile:
         #   type: RuntimeDefault
       containers:
-      - command:
-        - /manager
-        args:
+      - args:
         - --leader-elect
-        image: controller:latest
+        image: ko://main.go
         name: manager
         securityContext:
           allowPrivilegeEscalation: false
