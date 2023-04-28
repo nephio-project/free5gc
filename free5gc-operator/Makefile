@@ -34,7 +34,7 @@ IMG ?= $(REGISTRY)/$(CONTROLLER_NAME):$(TAG)
 endif
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.24.2
+ENVTEST_K8S_VERSION = 1.26.1
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -45,8 +45,8 @@ endif
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
-SHELL = /usr/bin/env bash -o pipefail
-.SHELLFLAGS = -ec
+# SHELL = /usr/bin/env bash -o pipefail
+# .SHELLFLAGS = -ec
 
 .PHONY: all
 all: build
@@ -190,8 +190,8 @@ KPT ?= $(LOCALBIN)/kpt
 KPTGEN ?= $(LOCALBIN)/kptgen
 
 ## Tool Versions
-KUSTOMIZE_VERSION ?= v3.8.7
-CONTROLLER_TOOLS_VERSION ?= v0.9.2
+KUSTOMIZE_VERSION ?= v5.0.1
+CONTROLLER_TOOLS_VERSION ?= v0.11.4
 KPT_VERSION ?= main
 KPTGEN_VERSION ?= v0.0.9
 

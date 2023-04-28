@@ -3,36 +3,40 @@ kind: UPFDeployment
 metadata:
   name: free5gc-upf-1
   namespace: upf-1
+  annotations:
+    config.kubernetes.io/local-config: "false"
 spec:
-  n3Interfaces:
-    - name: n3-1
-      gatewayIPs:
-        - "10.10.5.1"
-      ips:
-        - "10.10.5.3/24"
-  n4Interfaces:
-    - name: n4-1
-      gatewayIPs:
-        - "192.168.100.1"
-      ips:
-        - "192.168.100.3/24"
-  n6Interfaces:
-    - dnn: internet
-      interface:
-        name: n6-1
-        ips:
-          - "192.168.103.3/24"
-        gatewayIPs:
-          - "192.168.103.1"
-      ueIPPool: 10.20.0.0/16
-    - dnn: private
-      interface:
-        name: n6-2
-        ips:
-          - "192.168.203.3/24"
-        gatewayIPs:
-          - "192.168.203.1"
-      ueIPPool: 10.30.0.0/16
   capacity:
-    downlinkThroughput: 10Gi
-    uplinkThroughput: 1G
+    maxUplinkThroughput: 3G
+    maxDownlinkThroughput: 1G
+  interfaces:
+    - name: N3
+      ipv4:
+        address: 13.0.0.2/24
+        gateway: 13.0.0.1
+      vlanID: 13
+    - name: N4
+      ipv4:
+        address: 14.0.0.2/24
+        gateway: 14.0.0.1
+      vlanID: 14
+    - name: N6
+      ipv4:
+        address: 16.0.0.2/24
+        gateway: 16.0.0.1
+      vlanID: 16
+  networkInstances:
+    - name: vpc-ran
+      interfaces:
+        - N3
+    - name: vpc-internal
+      interfaces:
+        - N4
+    - name: vpc-internet
+      interfaces:
+        - N6
+      dataNetworks:
+        - name: internet
+          pool:
+            - prefix: 10.10.0.0/16
+  configRefs:
