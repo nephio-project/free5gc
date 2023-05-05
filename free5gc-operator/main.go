@@ -33,6 +33,8 @@ import (
 	runscheme "sigs.k8s.io/controller-runtime/pkg/scheme"
 
 	workloadv1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
+
+	workloadv1alpha1 "github.com/nephio-project/free5gc/api/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers"
 	//+kubebuilder:scaffold:imports
 )
@@ -48,6 +50,7 @@ func init() {
 
 	// utilruntime.Must(workloadv1alpha1.AddToScheme(scheme))
 
+	utilruntime.Must(workloadv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -104,6 +107,13 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "UPFDeployment")
+		os.Exit(1)
+	}
+	if err = (&controllers.SMFDeploymentReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "SMFDeployment")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
