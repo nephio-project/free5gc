@@ -1,0 +1,12 @@
+apiVersion: workload.nephio.org/v1alpha1
+kind: SMFDeployment
+metadata:
+  labels:
+    app.kubernetes.io/name: smfdeployment
+    app.kubernetes.io/instance: smfdeployment-sample
+    app.kubernetes.io/part-of: free5gc-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: free5gc-operator
+  name: smfdeployment-sample
+spec:
+  # TODO(user): Add fields here
