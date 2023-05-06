@@ -163,21 +163,21 @@ func TestGetSMFResourceParams(t *testing.T) {
 	}
 }
 
-func TestConstructSMFNadName(t *testing.T) {
-	var tests = []struct {
-		args []string
-		want string
-	}{
-		{[]string{"test-smf-deployment", "pfcp"}, "test-upf-deployment-pfcp"},
-		{[]string{"test-smf-deployment", "n4"}, "test-upf-deployment-n4"},
-		{[]string{"test-smf-deployment", "n11"}, "test-upf-deployment-n11"},
-	}
-	for _, test := range tests {
-		if got := constructSMFNadName(test.args[0], test.args[1]); got != test.want {
-			t.Errorf("constructSMFNadNAme(%s, %s) = %v, want %s", test.args[0], test.args[1], got, test.want)
-		}
-	}
-}
+// func TestConstructSMFNadName(t *testing.T) {
+// 	var tests = []struct {
+// 		args []string
+// 		want string
+// 	}{
+// 		{[]string{"test-smf-deployment", "pfcp"}, "test-upf-deployment-pfcp"},
+// 		{[]string{"test-smf-deployment", "n4"}, "test-upf-deployment-n4"},
+// 		{[]string{"test-smf-deployment", "n11"}, "test-upf-deployment-n11"},
+// 	}
+// 	for _, test := range tests {
+// 		if got := constructSMFNadName(test.args[0], test.args[1]); got != test.want {
+// 			t.Errorf("constructSMFNadNAme(%s, %s) = %v, want %s", test.args[0], test.args[1], got, test.want)
+// 		}
+// 	}
+// }
 
 func TestGetSMFNad(t *testing.T) {
 	smfDeploymentInstance := newSmfDeployInstance("test-smf-deployment")
@@ -210,13 +210,13 @@ func TestFree5gcSMFCreateConfigmap(t *testing.T) {
 	}
 
 	n4IP, _ := getIPv4(smfDeploymentInstance.Spec.Interfaces, "N4")
-	n11IP, _ := getIPv4(smfDeploymentInstance.Spec.Interfaces, "N11")
+	// n11IP, _ := getIPv4(smfDeploymentInstance.Spec.Interfaces, "N11")
 	// n3IP, _ := getIPv4(smfDeploymentInstance.Spec.Interfaces, "N3")
 	// n6IP, _ := getIntConfig(smfDeploymentInstance.Spec.Interfaces, "N6")
 
 	smfcfgStruct := SMFcfgStruct{}
 	smfcfgStruct.PFCP_IP = n4IP
-	smfcfgStruct.N11_IP = n11IP
+	// smfcfgStruct.N11_IP = n11IP
 	// upfcfgStruct.GTPU_IP = n3IP
 
 	// n6Cfg, _ := getNetworkInsance(upfDeploymentInstance.Spec, "N6")
