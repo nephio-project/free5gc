@@ -1,0 +1,168 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.9.2
+  creationTimestamp: null
+  name: smfdeployments.workload.nephio.org
+spec:
+  group: workload.nephio.org
+  names:
+    kind: SMFDeployment
+    listKind: SMFDeploymentList
+    plural: smfdeployments
+    singular: smfdeployment
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: SMFDeployment is the Schema for the smfdeployments API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: SMFDeploymentSpec defines the desired state of SMFDeployment
+            properties:
+              capacity:
+                properties:
+                  maxSessions:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                type: object
+              foo:
+                description: Foo is an example field of SMFDeployment. Edit smfdeployment_types.go
+                  to remove/update
+                type: string
+              n3Interfaces:
+                description: Optional?
+                items:
+                  properties:
+                    gatewayIPs:
+                      description: IPv4 addresses for gateway for this interface
+                      items:
+                        type: string
+                      type: array
+                    ips:
+                      description: IPv4 CIDRs for this interface
+                      items:
+                        type: string
+                      type: array
+                    name:
+                      description: Name of the interface
+                      type: string
+                    vlan:omitempty:
+                      description: VLAN for this interface such that workload can
+                        tag, especially in case of sr-iov
+                      type: string
+                  type: object
+                type: array
+              n4Interfaces:
+                items:
+                  properties:
+                    gatewayIPs:
+                      description: IPv4 addresses for gateway for this interface
+                      items:
+                        type: string
+                      type: array
+                    ips:
+                      description: IPv4 CIDRs for this interface
+                      items:
+                        type: string
+                      type: array
+                    name:
+                      description: Name of the interface
+                      type: string
+                    vlan:omitempty:
+                      description: VLAN for this interface such that workload can
+                        tag, especially in case of sr-iov
+                      type: string
+                  type: object
+                type: array
+              n11Interfaces:
+                items:
+                  properties:
+                    gatewayIPs:
+                      description: IPv4 addresses for gateway for this interface
+                      items:
+                        type: string
+                      type: array
+                    ips:
+                      description: IPv4 CIDRs for this interface
+                      items:
+                        type: string
+                      type: array
+                    name:
+                      description: Name of the interface
+                      type: string
+                    vlan:omitempty:
+                      description: VLAN for this interface such that workload can
+                        tag, especially in case of sr-iov
+                      type: string
+                  type: object
+                type: array
+            required:
+            - capacity
+            - n3Interfaces
+            - n4Interfaces
+            type: object
+          status:
+            description: SMFDeploymentStatus defines the observed state of SMFDeployment
+            properties:
+              conditions:
+                description: Current service state of the UPF.
+                items:
+                  properties:
+                    lastProbeTime:
+                      description: The last time this condition was probed for.
+                      format: date-time
+                      type: string
+                    lastTransitionTime:
+                      description: Last time the condition transitioned from one status
+                        to another.
+                      format: date-time
+                      type: string
+                    message:
+                      description: A human readable message indicating details about
+                        the transition.
+                      type: string
+                    reason:
+                      description: The reason for the condition's last transition.
+                      type: string
+                    status:
+                      description: Status of the condition, one of True, False, Unknown.
+                      type: string
+                    type:
+                      description: Type of deployment condition.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
+              observedGeneration:
+                description: The generation observed by the deployment controller.
+                format: int32
+                type: integer
+            required:
+            - observedGeneration
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
