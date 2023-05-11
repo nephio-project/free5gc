@@ -1,0 +1,23 @@
+# TODO
+apiVersion: workload.nephio.org/v1alpha1
+kind: SMFDeployment
+metadata:
+  name: free5gc-smf-1
+  namespace: smf-1
+  annotations:
+    config.kubernetes.io/local-config: "false"
+spec:
+  capacity:
+    maxSessions: 1000
+    maxNFConnections: 10
+  interfaces:
+    - name: n4
+      ipv4:
+        address: 14.0.0.2/24
+        gateway: 14.0.0.1
+      vlanID: 14
+  networkInstances:
+    - name: vpc-internal
+      interfaces:
+        - n4
+  configRefs:

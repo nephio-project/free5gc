@@ -35,64 +35,24 @@ import (
 
 func newSMFNxInterface(name string) workloadv1alpha1.InterfaceConfig {
 	switch name {
-	case "n3":
-		gw := "10.10.10.1"
-		n3int := workloadv1alpha1.InterfaceConfig{
-			Name: "N3",
-			IPv4: &workloadv1alpha1.IPv4{
-				Address: "10.10.10.10/24",
-				Gateway: &gw,
-			},
-		}
-		return n3int
-
 	case "n4":
 		gw := "10.10.11.1"
 		n4int := workloadv1alpha1.InterfaceConfig{
-			Name: "N4",
+			Name: "n4",
 			IPv4: &workloadv1alpha1.IPv4{
 				Address: "10.10.11.10/24",
 				Gateway: &gw,
 			},
 		}
 		return n4int
-
-	case "n6":
-		gw := "10.10.12.1"
-		n6int := workloadv1alpha1.InterfaceConfig{
-			Name: "N6",
-			IPv4: &workloadv1alpha1.IPv4{
-				Address: "10.10.12.10/24",
-				Gateway: &gw,
-			},
-		}
-		return n6int
-
-	case "n11":
-		gw := "10.10.12.1"
-		n11int := workloadv1alpha1.InterfaceConfig{
-			Name: "N11",
-			IPv4: &workloadv1alpha1.IPv4{
-				Address: "10.10.12.10/24",
-				Gateway: &gw,
-			},
-		}
-		return n11int
 	}
 	return workloadv1alpha1.InterfaceConfig{}
 }
 
 func newSmfDeployInstance(name string) *workloadv1alpha1.SMFDeployment {
 	interfaces := []workloadv1alpha1.InterfaceConfig{}
-	// n6int := newNxInterface("n6")
-	// n3int := newNxInterface("n3")
 	n4int := newSMFNxInterface("n4")
-	n11int := newSMFNxInterface("n11")
-	// interfaces = append(interfaces, n6int)
-	// interfaces = append(interfaces, n3int)
 	interfaces = append(interfaces, n4int)
-	interfaces = append(interfaces, n11int)
-	dnnName := "apn-test"
 
 	smfDeployInstance := &workloadv1alpha1.SMFDeployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -103,33 +63,11 @@ func newSmfDeployInstance(name string) *workloadv1alpha1.SMFDeployment {
 			NFDeploymentSpec: workloadv1alpha1.NFDeploymentSpec{
 				ConfigRefs: []apiv1.ObjectReference{},
 				Capacity: &nephioreqv1alpha1.CapacitySpec{
-					MaxUplinkThroughput:   resource.MustParse("1G"),
-					MaxDownlinkThroughput: resource.MustParse("5G"),
-					MaxSessions:           1000,
-					MaxSubscribers:        1000,
-					MaxNFConnections:      2000,
+					MaxSessions:      1000,
+					MaxSubscribers:   1000,
+					MaxNFConnections: 2000,
 				},
 				Interfaces: interfaces,
-				NetworkInstances: []workloadv1alpha1.NetworkInstance{
-					{
-						Name: "vpc-internet",
-						Interfaces: []string{
-							"N6",
-						},
-						DataNetworks: []workloadv1alpha1.DataNetwork{
-							{
-								Name: &dnnName,
-								Pool: []workloadv1alpha1.Pool{
-									{
-										Prefix: "100.100.0.0/16",
-									},
-								},
-							},
-						},
-						BGP:   nil,
-						Peers: []workloadv1alpha1.PeerConfig{},
-					},
-				},
 			},
 		},
 	}
@@ -137,6 +75,7 @@ func newSmfDeployInstance(name string) *workloadv1alpha1.SMFDeployment {
 	return smfDeployInstance
 }
 
+// Missing maxSessions, maxNFConnections
 func TestGetSMFResourceParams(t *testing.T) {
 	smfDeploymentInstance := newSmfDeployInstance("test-smf-deployment")
 
@@ -148,18 +87,23 @@ func TestGetSMFResourceParams(t *testing.T) {
 	if replicas != 1 {
 		t.Errorf("getSMFResourceParams returned number of replicas = %d, want %d", replicas, 1)
 	}
+
+	// cpuLimit = "100m"
+	// cpuRequest = "100m"
+	// memoryRequest = "128Mi"
+
 	want := &apiv1.ResourceRequirements{
 		Limits: apiv1.ResourceList{
-			"cpu":    resource.MustParse("500m"),
-			"memory": resource.MustParse("512Mi"),
+			"cpuLimit":    resource.MustParse("100m"),
+			"memoryLimit": resource.MustParse("128Mi"),
 		},
 		Requests: apiv1.ResourceList{
-			"cpu":    resource.MustParse("500m"),
-			"memory": resource.MustParse("512Mi"),
+			"cpuRequest":    resource.MustParse("100m"),
+			"memoryRequest": resource.MustParse("128Mi"),
 		},
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("getResourceParams(%+v) returned %+v, want %+v", smfDeploymentInstance.Spec, got, want)
+		t.Errorf("getSMFResourceParams(%+v) returned %+v, want %+v", smfDeploymentInstance.Spec, got, want)
 	}
 }
 
@@ -184,16 +128,9 @@ func TestGetSMFNad(t *testing.T) {
 	got := getSMFNad("test-smf-deployment", &smfDeploymentInstance.DeepCopy().Spec)
 
 	want := `[
-        {"name": "test-smf-deployment-n4",
-         "interface": "N4",
-         "ips": ["10.10.11.10/24"],
-         "gateways": ["10.10.11.1"]
+        {"name": "n4",
+         "interface": "n4",
         },
-        {"name": "test-smf-deployment-n11",
-         "interface": "N6",
-         "ips": ["10.10.12.10/24"],
-         "gateways": ["10.10.12.1"]
-        }
     ]`
 
 	if got != want {
@@ -209,34 +146,16 @@ func TestFree5gcSMFCreateConfigmap(t *testing.T) {
 		t.Errorf("free5gcSMFCreateConfigmap() returned unexpected error %v", err)
 	}
 
-	n4IP, _ := getIPv4(smfDeploymentInstance.Spec.Interfaces, "N4")
-	// n11IP, _ := getIPv4(smfDeploymentInstance.Spec.Interfaces, "N11")
-	// n3IP, _ := getIPv4(smfDeploymentInstance.Spec.Interfaces, "N3")
-	// n6IP, _ := getIntConfig(smfDeploymentInstance.Spec.Interfaces, "N6")
+	n4IP, _ := getIPv4(smfDeploymentInstance.Spec.Interfaces, "n4")
 
 	smfcfgStruct := SMFcfgStruct{}
 	smfcfgStruct.PFCP_IP = n4IP
-	// smfcfgStruct.N11_IP = n11IP
-	// upfcfgStruct.GTPU_IP = n3IP
-
-	// n6Cfg, _ := getNetworkInsance(upfDeploymentInstance.Spec, "N6")
-	// upfcfgStruct.N6cfg = n6Cfg
 
 	smfcfgTemplate := template.New("SMFCfg")
 	smfcfgTemplate, err = smfcfgTemplate.Parse(SMFCfgTemplate)
 	if err != nil {
 		t.Error("Could not parse SMFCfgTemplate template.")
 	}
-	// smfwrapperTemplate := template.New("SMFCfg")
-	// smfwrapperTemplate, _ = smfwrapperTemplate.Parse(SMFWrapperScript)
-	// if err != nil {
-	// 	t.Error("Could not parse UPFWrapperScript template.")
-	// }
-
-	// var wrapper bytes.Buffer
-	// if err := upfwrapperTemplate.Execute(&wrapper, upfcfgStruct); err != nil {
-	// 	t.Error("Could not render UPFWrapperScript template.")
-	// }
 
 	var smfcfg bytes.Buffer
 	if err := smfcfgTemplate.Execute(&smfcfg, smfcfgStruct); err != nil {
@@ -254,7 +173,6 @@ func TestFree5gcSMFCreateConfigmap(t *testing.T) {
 		},
 		Data: map[string]string{
 			"smfcfg.yaml": smfcfg.String(),
-			// "wrapper.sh":  wrapper.String(),
 		},
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -471,6 +389,29 @@ func TestCaclculateSMFStatusReplicaFailure(t *testing.T) {
 	}
 }
 
+// Missing:
+//
+//   - Add UERouting
+//
+//   - Remove wrapper
+//
+//   - N4 only
+//
+//   - Completely different ConfigMap
+//
+//   - Add sbi:
+//     scheme: http
+//     registerIPv4: smf-nsmf # IP used to register to NRF
+//     bindingIPv4: 0.0.0.0  # IP used to bind the service
+//     port: 80
+//     tls:
+//     key: config/TLS/smf.key
+//     pem: config/TLS/smf.pem
+//
+//     nrfUri: http://nrf-nnrf:8000
+//
+// - Generate Service object per link below
+// https://github.com/s3wong/free5gc/blob/main/doc/sample-manifests/smf.yaml#L172
 func TestFree5gcSMFDeployment(t *testing.T) {
 	log := log.FromContext(context.TODO())
 	smfDeploymentInstance := newSmfDeployInstance("test-smf-deployment")
@@ -497,16 +438,9 @@ func TestFree5gcSMFDeployment(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
 						"k8s.v1.cni.cncf.io/networks": `[
-        {"name": "test-smf-deployment-n4",
-         "interface": "N4",
-         "ips": ["10.10.11.10/24"],
-         "gateways": ["10.10.11.1"]
+        {"name": "n4",
+         "interface": "n4",
         },
-        {"name": "test-smf-deployment-n11",
-         "interface": "N11",
-         "ips": ["10.10.12.10/24"],
-         "gateways": ["10.10.12.1"]
-        }
     ]`,
 					},
 					Labels: map[string]string{
@@ -532,9 +466,6 @@ func TestFree5gcSMFDeployment(t *testing.T) {
 									ContainerPort: 8805,
 								},
 							},
-							// Command: []string{
-							// 	"/free5gc/config//wrapper.sh",
-							// },
 							VolumeMounts: []apiv1.VolumeMount{
 								{
 									MountPath: "/free5gc/config/",
@@ -571,11 +502,6 @@ func TestFree5gcSMFDeployment(t *testing.T) {
 														Key:  "smfcfg.yaml",
 														Path: "smfcfg.yaml",
 													},
-													// {
-													// 	Key:  "wrapper.sh",
-													// 	Path: "wrapper.sh",
-													// 	Mode: &wrapperMode,
-													// },
 												},
 											},
 										},

@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"sort"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -62,31 +63,29 @@ type SMFAnnotation struct {
 	Gateway   string `json:"gateway"`
 }
 
+// Check string -> int/string -uint16 conversion
 func getSMFResourceParams(smfSpec workloadv1alpha1.SMFDeploymentSpec) (int32, *apiv1.ResourceRequirements, error) {
 	// Placeholder for Capacity calculation. Reqiurce requirements houlw be calculated based on DL, UL.
 
-	// TODO: increase number of recpicas based on NFDeployment.Capacity.MaxSessions
+	// TODO: increase number of replicas based on NFDeployment.Capacity.MaxSessions
 	var replicas int32 = 1
-
-	// downlink := resource.MustParse("5G")
-	// uplink := resource.MustParse("1G")
 	var cpuLimit string
 	var cpuRequest string
 	var memoryLimit string
 	var memoryRequest string
-	var maxSessions int
-	var maxNFConnections uint16
 
-	// spec.Capacity
 	// spec.Capacity.MaxSessions <1000 -> 128Mi
-	// spec.Capacity.MaxNFConnections  <10 -> 128Mi
-	maxSessions = smfSpec.Capacity.MaxSessions
-	cpuLimit = "100m"
-	cpuRequest = "100m"
-	memoryRequest = "128Mi"
-
-	if maxSessions < 1000 || maxNFConnections < 10 {
+	// spec.Capacity.MaxNFConnections <10 -> 128Mi
+	if smfSpec.Capacity.MaxSessions < 1000 && smfSpec.Capacity.MaxNFConnections < 10 {
+		cpuLimit = "100m"
+		cpuRequest = "100m"
+		memoryRequest = "128Mi"
 		memoryLimit = "128Mi"
+	} else {
+		cpuLimit = "500m"
+		cpuRequest = "500m"
+		memoryRequest = "512Mi"
+		memoryLimit = "512Mi"
 	}
 
 	resources := apiv1.ResourceRequirements{}
@@ -101,76 +100,60 @@ func getSMFResourceParams(smfSpec workloadv1alpha1.SMFDeploymentSpec) (int32, *a
 	return replicas, &resources, nil
 }
 
-// func constructSMFNadName() string {
-// 	//return templateName + "-" + suffix
-// 	return "n4"
-// }
+func constructSMFNadName(templateName string, suffix string) string {
+	return templateName + "-" + suffix
+	// return "n4"
+}
 
-// getNads retursn NAD label string composed based on the Nx interfaces configuration provided in UPFDeploymentSpec
+// getNads retursn NAD label string composed based on the Nx interfaces configuration provided in SMFDeploymentSpec
 func getSMFNad(templateName string, spec *workloadv1alpha1.SMFDeploymentSpec) string {
-	// var ret string
+	var ret string
 
 	// n6CfgSlice := getIntConfigSlice(spec.Interfaces, "N6")
 	// n3CfgSlice := getIntConfigSlice(spec.Interfaces, "N3")
-	// n4CfgSlice := getIntConfigSlice(spec.Interfaces, "N4")
-	// n11CfgSlice := getIntConfigSlice(spec.Interfaces, "N11")
+	n4CfgSlice := getIntConfigSlice(spec.Interfaces, "N4")
+	// n9CfgSlice := getIntConfigSlice(spec.Interfaces, "N9")
 
-	//annotations:
+	ret = `[`
+	intfMap := map[string][]workloadv1alpha1.InterfaceConfig{
+		// "n3": n3CfgSlice,
+		"n4": n4CfgSlice,
+		// "n6": n6CfgSlice,
+		// "n9": n9CfgSlice,
+	}
+	// Need to sort inftMap by key otherwise unitTests might fail as order of intefaces in intfMap is not guaranteed
+	inftMapKeys := make([]string, 0, len(intfMap))
+	for interfaceName := range intfMap {
+		inftMapKeys = append(inftMapKeys, interfaceName)
+	}
+	sort.Strings(inftMapKeys)
 
-	// k8s.v1.cni.cncf.io/networks: '[
-	// 	{ "name": "n4network-smf",
-	// 	}]'
-	// k8s.v1.cni.cncf.io/networks: '[
-	// 	{ "name": "n4",
-	// 	}]'
-	// k8s.v1.cni.cncf.io/networks: '[
-	// 	{ "name": "n4network-smf",
-	// 	}]'
-	// k8s.v1.cni.cncf.io/networks: '[
-	// 	{ "name": "n4",
-	// 	  "interface": "n4",
-	// 	}]'
+	noComma := true
+	for _, key := range inftMapKeys {
+		for _, intf := range intfMap[key] {
+			newNad := fmt.Sprintf(`
+        {"name": "%s",
+         "interface": "%s",
+         "ips": ["%s"],
+         "gateways": ["%s"]
+        }`, constructSMFNadName(templateName, key), intf.Name, intf.IPv4.Address, *intf.IPv4.Gateway)
+			if noComma {
+				ret = ret + newNad
+				noComma = false
+			} else {
+				ret = ret + "," + newNad
+			}
+		}
+	}
+	ret = ret + `
+    ]`
+	return ret
 
-	// ret = `[`
-	// intfMap := map[string][]workloadv1alpha1.InterfaceConfig{
-	// 	// first "n4" == name of NAD
-	// 	// n4
-	// 	"n4": n4CfgSlice,
-	// }
-	// // Need to sort inftMap by key otherwise unitTests might fail as order of intefaces in intfMap is not guaranteed
-	// inftMapKeys := make([]string, 0, len(intfMap))
-	// for interfaceName := range intfMap {
-	// 	inftMapKeys = append(inftMapKeys, interfaceName)
-	// }
-	// sort.Strings(inftMapKeys)
-
-	// // noComma := true
-	// // for _, key := range inftMapKeys {
-	// // 	for _, intf := range intfMap[key] {
-	// // 		newNad := fmt.Sprintf(`
-	// //     {"name": "%s",
-	// //     }`, constructSMFNadName(templateName, key), intf.Name, intf.IPv4.Address, *intf.IPv4.Gateway)
-	// // 		if noComma {
-	// // 			ret = ret + newNad
-	// // 			noComma = false
-	// // 		} else {
-	// // 			ret = ret + "," + newNad
-	// // 		}
-	// // 	}
-	// // }
-
-	// // annotations:
-	// //    annotations:
-	// // k8s.v1.cni.cncf.io/networks: '[
-	// // 	{ "name": "n4",
-	// // 	}]'
-	// ret = ret + `name:
+	// return `[
+	//     {"name": "free5gc-smf-1-n4",
+	//      "interface": "n4"
+	//     }
 	// ]`
-
-	return `[
-			{ "name": "n4",
-		 	  "interface": "n4",
-		 	}]`
 
 }
 
@@ -206,13 +189,12 @@ func (r *SMFDeploymentReconciler) checkSMFNADexist(log logr.Logger, ctx context.
 }
 
 func free5gcSMFDeployment(log logr.Logger, smfDeploy *workloadv1alpha1.SMFDeployment) (*appsv1.Deployment, error) {
-	//TODO(jbelamaric): Update to use ImageConfig spec.ImagePaths["upf"],
+	//TODO(jbelamaric): Update to use ImageConfig spec.ImagePaths["smf"],
 	smfImage := "towards5gs/free5gc-smf:v3.1.1"
 
 	instanceName := smfDeploy.ObjectMeta.Name
 	namespace := smfDeploy.ObjectMeta.Namespace
 	smfSpec := smfDeploy.Spec
-	// var wrapperMode int32 = 511 // 777 octal
 	replicas, resourceReq, err := getSMFResourceParams(smfSpec)
 	if err != nil {
 		return nil, err
@@ -259,9 +241,6 @@ func free5gcSMFDeployment(log logr.Logger, smfDeploy *workloadv1alpha1.SMFDeploy
 									ContainerPort: 8805,
 								},
 							},
-							// Command: []string{
-							// 	"/free5gc/config//wrapper.sh",
-							// },
 							VolumeMounts: []apiv1.VolumeMount{
 								{
 									MountPath: "/free5gc/config/",
@@ -289,11 +268,10 @@ func free5gcSMFDeployment(log logr.Logger, smfDeploy *workloadv1alpha1.SMFDeploy
 														Key:  "smfcfg.yaml",
 														Path: "smfcfg.yaml",
 													},
-													// {
-													// 	Key:  "wrapper.sh",
-													// 	Path: "wrapper.sh",
-													// 	Mode: &wrapperMode,
-													// },
+													{
+														Key:  "uerouting.yaml",
+														Path: "uerouting.yaml",
+													},
 												},
 											},
 										},
@@ -316,22 +294,14 @@ func free5gcSMFCreateConfigmap(logger logr.Logger, smfDeploy *workloadv1alpha1.S
 	namespace := smfDeploy.ObjectMeta.Namespace
 	instanceName := smfDeploy.ObjectMeta.Name
 
-	n4IP, err := getIPv4(smfDeploy.Spec.Interfaces, "N4")
+	n4IP, err := getIPv4(smfDeploy.Spec.Interfaces, "n4")
 	if err != nil {
 		log.Log.Info("Interface N4 not found in NFDeployment Spec")
 		return nil, err
 	}
 
-	// n3IP, err := getIPv4(smfDeploy.Spec.Interfaces, "N3")
-	// if err != nil {
-	// 	log.Log.Info("Interface N3 not found in NFDeployment Spec")
-	// 	return nil, err
-	// }
-
 	smfcfgStruct := SMFcfgStruct{}
 	smfcfgStruct.PFCP_IP = n4IP
-
-	// smfcfgStruct.GTPU_IP = n3IP
 
 	smfcfgTemplate := template.New("SMFCfg")
 	smfcfgTemplate, err = smfcfgTemplate.Parse(SMFCfgTemplate)
@@ -340,18 +310,18 @@ func free5gcSMFCreateConfigmap(logger logr.Logger, smfDeploy *workloadv1alpha1.S
 		return nil, err
 	}
 
-	// smfwrapperTemplate := template.New("SMFCfg")
-	// smfwrapperTemplate, _ = smfwrapperTemplate.Parse(SMFWrapperScript)
-	// if err != nil {
-	// 	log.Log.Info("Could not parse SMFWrapperScript template.")
-	// 	return nil, err
-	// }
+	smfueroutingTemplate := template.New("SMFCfg")
+	smfueroutingTemplate, _ = smfueroutingTemplate.Parse(Uerouting)
+	if err != nil {
+		log.Log.Info("Could not parse Uerouting template.")
+		return nil, err
+	}
 
-	// var wrapper bytes.Buffer
-	// if err := smfwrapperTemplate.Execute(&wrapper, smfcfgStruct); err != nil {
-	// 	log.Log.Info("Could not render SMFWrapperScript template.")
-	// 	return nil, err
-	// }
+	var smf_uerouting bytes.Buffer
+	if err := smfueroutingTemplate.Execute(&smf_uerouting, smfcfgStruct); err != nil {
+		log.Log.Info("Could not render smf_uerouting template.")
+		return nil, err
+	}
 
 	var smfcfg bytes.Buffer
 	if err := smfcfgTemplate.Execute(&smfcfg, smfcfgStruct); err != nil {
@@ -369,8 +339,8 @@ func free5gcSMFCreateConfigmap(logger logr.Logger, smfDeploy *workloadv1alpha1.S
 			Namespace: namespace,
 		},
 		Data: map[string]string{
-			"smfcfg.yaml": smfcfg.String(),
-			// "wrapper.sh":  wrapper.String(),
+			"smfcfg.yaml":    smfcfg.String(),
+			"uerouting.yaml": smf_uerouting.String(),
 		},
 	}
 	return configMap, nil
