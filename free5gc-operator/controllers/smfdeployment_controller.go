@@ -190,7 +190,7 @@ func (r *SMFDeploymentReconciler) checkSMFNADexist(log logr.Logger, ctx context.
 
 func free5gcSMFDeployment(log logr.Logger, smfDeploy *workloadv1alpha1.SMFDeployment) (*appsv1.Deployment, error) {
 	//TODO(jbelamaric): Update to use ImageConfig spec.ImagePaths["smf"],
-	smfImage := "towards5gs/free5gc-smf:v3.1.1"
+	smfImage := "towards5gs/free5gc-smf:v3.2.0"
 
 	instanceName := smfDeploy.ObjectMeta.Name
 	namespace := smfDeploy.ObjectMeta.Namespace
