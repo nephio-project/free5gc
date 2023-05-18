@@ -1,0 +1,10 @@
+Copyright 2023 The Nephio Authors.
+
+---
+
+The `free5gc-images` directory includes code from:
+
+    https://github.com/Orange-OpenSource/towards5gs-helm
+
+This code was distributed under the Apache License Version 2.0 and
+did not include a NOTICE file.
