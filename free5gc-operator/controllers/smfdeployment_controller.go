@@ -192,7 +192,8 @@ func free5gcSMFDeployment(log logr.Logger, smfDeploy *workloadv1alpha1.SMFDeploy
 	//TODO(jbelamaric): Update to use ImageConfig spec.ImagePaths["smf"],
 	// smfImage := "nephio/free5gc-smf:latest"
 	smfImage := "towards5gs/free5gc-smf:v3.2.0"
-        
+	smfImage := "towards5gs/free5gc-smf:v3.2.0"
+
 	instanceName := smfDeploy.ObjectMeta.Name
 	namespace := smfDeploy.ObjectMeta.Namespace
 	smfSpec := smfDeploy.Spec
