@@ -105,7 +105,7 @@ func constructSMFNadName(templateName string, suffix string) string {
 	// return "n4"
 }
 
-// getNads retursn NAD label string composed based on the Nx interfaces configuration provided in SMFDeploymentSpec
+// getSMFNad returns NAD label string composed based on the Nx interfaces configuration provided in SMFDeploymentSpec
 func getSMFNad(templateName string, spec *workloadv1alpha1.SMFDeploymentSpec) string {
 	var ret string
 
@@ -190,8 +190,9 @@ func (r *SMFDeploymentReconciler) checkSMFNADexist(log logr.Logger, ctx context.
 
 func free5gcSMFDeployment(log logr.Logger, smfDeploy *workloadv1alpha1.SMFDeployment) (*appsv1.Deployment, error) {
 	//TODO(jbelamaric): Update to use ImageConfig spec.ImagePaths["smf"],
+	// smfImage := "nephio/free5gc-smf:latest"
 	smfImage := "towards5gs/free5gc-smf:v3.2.0"
-
+        
 	instanceName := smfDeploy.ObjectMeta.Name
 	namespace := smfDeploy.ObjectMeta.Namespace
 	smfSpec := smfDeploy.Spec
