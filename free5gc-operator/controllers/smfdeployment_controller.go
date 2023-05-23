@@ -151,8 +151,8 @@ func getSMFNad(templateName string, spec *workloadv1alpha1.SMFDeploymentSpec) st
 
 	// return `[
 	//     {"name": "free5gc-smf-1-n4",
-	//      "interface": "n4"
-	//     }
+	//      "interface": "n4",
+	//     },
 	// ]`
 
 }
@@ -191,7 +191,6 @@ func (r *SMFDeploymentReconciler) checkSMFNADexist(log logr.Logger, ctx context.
 func free5gcSMFDeployment(log logr.Logger, smfDeploy *workloadv1alpha1.SMFDeployment) (*appsv1.Deployment, error) {
 	//TODO(jbelamaric): Update to use ImageConfig spec.ImagePaths["smf"],
 	// smfImage := "nephio/free5gc-smf:latest"
-	smfImage := "towards5gs/free5gc-smf:v3.2.0"
 	smfImage := "towards5gs/free5gc-smf:v3.2.0"
 
 	instanceName := smfDeploy.ObjectMeta.Name
