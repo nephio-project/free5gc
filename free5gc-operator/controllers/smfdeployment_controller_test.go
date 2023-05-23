@@ -94,12 +94,12 @@ func TestGetSMFResourceParams(t *testing.T) {
 
 	want := &apiv1.ResourceRequirements{
 		Limits: apiv1.ResourceList{
-			"cpuLimit":    resource.MustParse("100m"),
-			"memoryLimit": resource.MustParse("128Mi"),
+			"cpu":    resource.MustParse("500m"),
+			"memory": resource.MustParse("512Mi"),
 		},
 		Requests: apiv1.ResourceList{
-			"cpuRequest":    resource.MustParse("100m"),
-			"memoryRequest": resource.MustParse("128Mi"),
+			"cpu":    resource.MustParse("500m"),
+			"memory": resource.MustParse("512Mi"),
 		},
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -127,14 +127,24 @@ func TestGetSMFNad(t *testing.T) {
 	smfDeploymentInstance := newSmfDeployInstance("test-smf-deployment")
 	got := getSMFNad("test-smf-deployment", &smfDeploymentInstance.DeepCopy().Spec)
 
+//        want := `[
+//                {"name": "test-smf-deployment-n4",
+//                 "interface": "n4",
+//                 "ips": ["10.10.11.10/24"],
+//                 "gateways": ["10.10.11.1"]
+//                }
+//            ]`
+
 	want := `[
-        {"name": "n4",
-         "interface": "n4",
-        },
-    ]`
+                {"name": "test-smf-deployment-n4",
+                 "interface": "n4",
+                 "ips": ["10.10.11.10/24"],
+                 "gateways": ["10.10.11.1"]
+                }
+            ]`
 
 	if got != want {
-		t.Errorf("getNad(%v) returned %v, want %v", smfDeploymentInstance.Spec, got, want)
+		t.Errorf("getSMFNad(%v) returned %v, want %v", smfDeploymentInstance.Spec, got, want)
 	}
 }
 
