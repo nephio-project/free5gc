@@ -34,7 +34,7 @@ func newAMFNxInterface(name string) workloadv1alpha1.InterfaceConfig {
 	switch name {
 	case "n2":
 		gw := "10.10.10.1"
-		n3int := workloadv1alpha1.InterfaceConfig{
+		n2int := workloadv1alpha1.InterfaceConfig{
 			Name: "N2",
 			IPv4: &workloadv1alpha1.IPv4{
 				Address: "10.10.10.10/24",
@@ -42,53 +42,14 @@ func newAMFNxInterface(name string) workloadv1alpha1.InterfaceConfig {
 			},
 		}
 		return n2int
-
-//	case "n4":
-//		gw := "10.10.11.1"
-//		n4int := workloadv1alpha1.InterfaceConfig{
-//			Name: "N4",
-//			IPv4: &workloadv1alpha1.IPv4{
-//				Address: "10.10.11.10/24",
-//				Gateway: &gw,
-//			},
-//		}
-//		return n4int
-
-//	case "n6":
-//		gw := "10.10.12.1"
-//		n6int := workloadv1alpha1.InterfaceConfig{
-//			Name: "N6",
-//			IPv4: &workloadv1alpha1.IPv4{
-//				Address: "10.10.12.10/24",
-//				Gateway: &gw,
-//			},
-//		}
-//		return n6int
-
-	case "n11":
-		gw := "10.10.12.1"
-		n11int := workloadv1alpha1.InterfaceConfig{
-			Name: "N11",
-			IPv4: &workloadv1alpha1.IPv4{
-				Address: "10.10.12.10/24",
-				Gateway: &gw,
-			},
-		}
-		return n11int
 	}
 	return workloadv1alpha1.InterfaceConfig{}
 }
 
 func newAmfDeployInstance(name string) *workloadv1alpha1.AMFDeployment {
 	interfaces := []workloadv1alpha1.InterfaceConfig{}
-	// n6int := newNxInterface("n6")
-	// n3int := newNxInterface("n3")
 	n2int := newAMFNxInterface("n2")
-	n11int := newAMFNxInterface("n11")
-	// interfaces = append(interfaces, n6int)
-	// interfaces = append(interfaces, n3int)
 	interfaces = append(interfaces, n2int)
-	interfaces = append(interfaces, n11int)
 	dnnName := "apn-test"
 
 	amfDeployInstance := &workloadv1alpha1.AMFDeployment{
@@ -106,33 +67,33 @@ func newAmfDeployInstance(name string) *workloadv1alpha1.AMFDeployment {
 					MaxSubscribers:        1000,
 					MaxNFConnections:      2000,
 				},
-//				Interfaces: interfaces,
-//				NetworkInstances: []workloadv1alpha1.NetworkInstance{
-//					{
-//						Name: "vpc-internet",
-//						Interfaces: []string{
-//							"N6",
-//						},
-//						DataNetworks: []workloadv1alpha1.DataNetwork{
-//							{
-//								Name: &dnnName,
-//								Pool: []workloadv1alpha1.Pool{
-//									{
-//										Prefix: "100.100.0.0/16",
-//									},
-//								},
-//							},
-//						},
-//						BGP:   nil,
-//						Peers: []workloadv1alpha1.PeerConfig{},
-//					},
-//				},
-//			},
-//		},
-//	}
+				Interfaces: interfaces,
+				NetworkInstances: []workloadv1alpha1.NetworkInstance{
+					{
+						Name: "vpc-internet",
+						Interfaces: []string{
+							"N2",
+						},
+						DataNetworks: []workloadv1alpha1.DataNetwork{
+							{
+								Name: &dnnName,
+								Pool: []workloadv1alpha1.Pool{
+									{
+										Prefix: "100.100.0.0/16",
+									},
+								},
+							},
+						},
+						BGP:   nil,
+					Peers: []workloadv1alpha1.PeerConfig{},
+					},
+				},
+			},
+		},
+	}
 
-//	return smfDeployInstance
-//}
+	return amfDeployInstance
+}
 
 func TestGetAMFResourceParams(t *testing.T) {
 	amfDeploymentInstance := newAmfDeployInstance("test-amf-deployment")
@@ -141,18 +102,17 @@ func TestGetAMFResourceParams(t *testing.T) {
 	if err != nil {
 		t.Errorf("getAMFResourceParams() returned unexpected error %v", err)
 	}
-	// Adjust number of replicas expected once operator looks at capacity profile
 	if replicas != 1 {
 		t.Errorf("getAMFResourceParams returned number of replicas = %d, want %d", replicas, 1)
 	}
 	want := &apiv1.ResourceRequirements{
 		Limits: apiv1.ResourceList{
-			"cpu":    resource.MustParse("500m"),
-			"memory": resource.MustParse("512Mi"),
+			"cpu":    resource.MustParse("150m"),
+			"memory": resource.MustParse("128Mi"),
 		},
 		Requests: apiv1.ResourceList{
-			"cpu":    resource.MustParse("500m"),
-			"memory": resource.MustParse("512Mi"),
+			"cpu":    resource.MustParse("150m"),
+			"memory": resource.MustParse("128Mi"),
 		},
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -160,18 +120,16 @@ func TestGetAMFResourceParams(t *testing.T) {
 	}
 }
 
-func TestConstructSMFNadName(t *testing.T) {
+func TestConstructAMFNadName(t *testing.T) {
 	var tests = []struct {
 		args []string
 		want string
 	}{
-//		{[]string{"test-smf-deployment", "pfcp"}, "test-upf-deployment-pfcp"},
-		{[]string{"test-amf-deployment", "n2"}, "test-upf-deployment-n2"},
-		{[]string{"test-amf-deployment", "n11"}, "test-upf-deployment-n11"},
+		{[]string{"test-amf-deployment", "n2"}, "test-amf-deployment-n2"},
 	}
 	for _, test := range tests {
-		if got := constructSMFNadName(test.args[0], test.args[1]); got != test.want {
-			t.Errorf("constructSMFNadNAme(%s, %s) = %v, want %s", test.args[0], test.args[1], got, test.want)
+		if got := constructAMFNadName(test.args[0], test.args[1]); got != test.want {
+			t.Errorf("constructAMFNadNAme(%s, %s) = %v, want %s", test.args[0], test.args[1], got, test.want)
 		}
 	}
 }
@@ -183,18 +141,13 @@ func TestGetAMFNad(t *testing.T) {
 	want := `[
         {"name": "test-amf-deployment-n2",
          "interface": "N2",
-         "ips": ["10.10.11.10/24"],
-         "gateways": ["10.10.11.1"]
-        },
-        {"name": "test-amf-deployment-n11",
-         "interface": "N11",
-         "ips": ["10.10.12.10/24"],
-         "gateways": ["10.10.12.1"]
+         "ips": ["10.10.10.10/24"],
+         "gateways": ["10.10.10.1"]
         }
     ]`
 
 	if got != want {
-		t.Errorf("getNad(%v) returned %v, want %v", smfDeploymentInstance.Spec, got, want)
+		t.Errorf("getNad(%v) returned %v, want %v", amfDeploymentInstance.Spec, got, want)
 	}
 }
 
@@ -207,24 +160,15 @@ func TestFree5gcAMFCreateConfigmap(t *testing.T) {
 	}
 
 	n2IP, _ := getIPv4(amfDeploymentInstance.Spec.Interfaces, "N2")
-	n11IP, _ := getIPv4(amfDeploymentInstance.Spec.Interfaces, "N11")
-	// n3IP, _ := getIPv4(smfDeploymentInstance.Spec.Interfaces, "N3")
-	// n6IP, _ := getIntConfig(smfDeploymentInstance.Spec.Interfaces, "N6")
 
 	amfcfgStruct := AMFcfgStruct{}
 	amfcfgStruct.N2_IP = n2IP
-	amfcfgStruct.N11_IP = n11IP
-	// upfcfgStruct.GTPU_IP = n3IP
 
-	// n6Cfg, _ := getNetworkInsance(upfDeploymentInstance.Spec, "N6")
-	// upfcfgStruct.N6cfg = n6Cfg
-
-	amfcfgTemplate := template.New("SMFCfg")
+	amfcfgTemplate := template.New("AMFCfg")
 	amfcfgTemplate, err = amfcfgTemplate.Parse(AMFCfgTemplate)
 	if err != nil {
 		t.Error("Could not parse AMFCfgTemplate template.")
 	}
-	// amfwrapperTemplate := template.New("AMFCfg")
 	// amfwrapperTemplate, _ = amfwrapperTemplate.Parse(AMFWrapperScript)
 	// if err != nil {
 	// 	t.Error("Could not parse UPFWrapperScript template.")
@@ -303,7 +247,7 @@ func TestCaclculateAMFStatusDeployemntNotReady(t *testing.T) {
 
 	want := amfDeploymentInstance.Status.NFDeploymentStatus
 
-	got, b := calculateSMFStatus(deployment, amfDeploymentInstance)
+	got, b := calculateAMFStatus(deployment, amfDeploymentInstance)
 
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("calculateSMFStatus(%+v, %+v) returned %+v, want %+v", deployment, amfDeploymentInstance, got, want)
@@ -314,7 +258,7 @@ func TestCaclculateAMFStatusDeployemntNotReady(t *testing.T) {
 }
 
 func TestCaclculateAMFStatusProcessing(t *testing.T) {
-	amfDeploymentInstance := newAmfDeployInstance("test-smf-deployment")
+	amfDeploymentInstance := newAmfDeployInstance("test-amf-deployment")
 	deployment := &appsv1.Deployment{}
 
 	condition := metav1.Condition{}
@@ -326,13 +270,13 @@ func TestCaclculateAMFStatusProcessing(t *testing.T) {
 
 	want := amfDeploymentInstance.Status.NFDeploymentStatus
 
-	got, b := calculateSMFStatus(deployment, amfDeploymentInstance)
+	got, b := calculateAMFStatus(deployment, amfDeploymentInstance)
 
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("calculateSMFStatus(%+v, %+v) returned %+v, want %+v", deployment, amfDeploymentInstance, got, want)
+		t.Errorf("calculateAMFStatus(%+v, %+v) returned %+v, want %+v", deployment, amfDeploymentInstance, got, want)
 	}
 	if b != false {
-		t.Errorf("calculateSMFStatus(%+v, %+v) returned %+v, want %+v", deployment, amfDeploymentInstance, b, false)
+		t.Errorf("calculateAMFStatus(%+v, %+v) returned %+v, want %+v", deployment, amfDeploymentInstance, b, false)
 	}
 }
 
@@ -349,7 +293,7 @@ func TestCaclculateAMFStatusAvailable(t *testing.T) {
 
 	want := amfDeploymentInstance.Status.NFDeploymentStatus
 
-	got, b := calculateSMFStatus(deployment, amfDeploymentInstance)
+	got, b := calculateAMFStatus(deployment, amfDeploymentInstance)
 
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("calculateAMFtatus(%+v, %+v) returned %+v, want %+v", deployment, amfDeploymentInstance, got, want)
@@ -496,13 +440,8 @@ func TestFree5gcAMFDeployment(t *testing.T) {
 						"k8s.v1.cni.cncf.io/networks": `[
         {"name": "test-amf-deployment-n2",
          "interface": "N2",
-         "ips": ["10.10.11.10/24"],
-         "gateways": ["10.10.11.1"]
-        },
-        {"name": "test-amf-deployment-n11",
-         "interface": "N11",
-         "ips": ["10.10.12.10/24"],
-         "gateways": ["10.10.12.1"]
+         "ips": ["10.10.10.10/24"],
+         "gateways": ["10.10.10.1"]
         }
     ]`,
 					},
@@ -514,7 +453,7 @@ func TestFree5gcAMFDeployment(t *testing.T) {
 					Containers: []apiv1.Container{
 						{
 							Name:            "amf",
-							Image:           "towards5gs/free5gc-amf:v3.1.1",
+							Image:           "towards5gs/free5gc-amf:v3.2.0",
 							ImagePullPolicy: "Always",
 							SecurityContext: &apiv1.SecurityContext{
 								Capabilities: &apiv1.Capabilities{
@@ -540,12 +479,12 @@ func TestFree5gcAMFDeployment(t *testing.T) {
 							},
 							Resources: apiv1.ResourceRequirements{
 								Limits: apiv1.ResourceList{
-									"cpu":    resource.MustParse("500m"),
-									"memory": resource.MustParse("512Mi"),
+									"cpu":    resource.MustParse("150m"),
+									"memory": resource.MustParse("128Mi"),
 								},
 								Requests: apiv1.ResourceList{
-									"cpu":    resource.MustParse("500m"),
-									"memory": resource.MustParse("512Mi"),
+									"cpu":    resource.MustParse("150m"),
+									"memory": resource.MustParse("128Mi"),
 								},
 							},
 						},
