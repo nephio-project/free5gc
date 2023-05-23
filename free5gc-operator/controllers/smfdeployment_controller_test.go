@@ -111,23 +111,21 @@ func TestGetSMFNad(t *testing.T) {
 	smfDeploymentInstance := newSmfDeployInstance("test-smf-deployment")
 	got := getSMFNad("test-smf-deployment", &smfDeploymentInstance.DeepCopy().Spec)
 
-        want := `[
-        {"name": "test-smf-deployment-n4",
-         "interface": "n4",
-	 "ips": ["10.10.11.10/24"],
-         "gateways": ["10.10.11.1"]
-        }
-    ]`
-	if got != want {
+	want:= `[
+                {"name": "test-smf-deployment-n4",
+                 "interface": "n4",
+                 "ips": ["10.10.11.10/24"],
+                 "gateways": ["10.10.11.1"]
+                }
+            ]`
+        if got != want {
 		t.Errorf("getSMFNad(%v) returned %v, want %v", smfDeploymentInstance.Spec, got, want)
 	}
 }
 
 func TestFree5gcSMFCreateConfigMap(t *testing.T) {
 	log := log.FromContext(context.TODO())
-	
 	smfDeploymentInstance := newSmfDeployInstance("test-smf-deployment")
-	
 	got, err := free5gcSMFCreateConfigmap(log, smfDeploymentInstance)
 	if err != nil {
 		t.Errorf("free5gcSMFCreateConfigmap() returned unexpected error %v", err)
@@ -437,9 +435,11 @@ func TestFree5gcSMFDeployment(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
 						"k8s.v1.cni.cncf.io/networks": `[
-        {"name": "n4",
+        {"name": "test-smf-deployment-n4",
          "interface": "n4",
-        },
+	 "ips": ["10.10.11.10/24"],
+         "gateways": ["10.10.11.1"]
+        } 
     ]`,
 					},
 					Labels: map[string]string{
@@ -500,6 +500,10 @@ func TestFree5gcSMFDeployment(t *testing.T) {
 													{
 														Key:  "smfcfg.yaml",
 														Path: "smfcfg.yaml",
+													},
+													{
+														Key: "uerouting.yaml",
+														Path: "uerouting.yaml",
 													},
 												},
 											},
