@@ -53,7 +53,7 @@ type AMFDeploymentReconciler struct {
 
 type AMFcfgStruct struct {
 	N2_IP  string
-	N11_IP string
+//	N11_IP string
 //	N6cfg   []workloadv1alpha1.NetworkInstance
 //	N6gw    string
 }
@@ -108,14 +108,14 @@ func getNad(templateName string, spec *workloadv1alpha1.AMFDeploymentSpec) strin
 	var ret string
 
 	n2CfgSlice := getIntConfigSlice(spec.Interfaces, "N2")
-	n11CfgSlice := getIntConfigSlice(spec.Interfaces, "N11")
+//	n11CfgSlice := getIntConfigSlice(spec.Interfaces, "N11")
 //	n4CfgSlice := getIntConfigSlice(spec.Interfaces, "N4")
 //	n9CfgSlice := getIntConfigSlice(spec.Interfaces, "N9")
 
 	ret = `[`
 	intfMap := map[string][]workloadv1alpha1.InterfaceConfig{
 		"n2": n2CfgSlice,
-		"n11": n11CfgSlice,
+//		"n11": n11CfgSlice,
 //		"n6": n6CfgSlice,
 //		"n9": n9CfgSlice,
 	}
@@ -291,11 +291,11 @@ func free5gcAMFCreateConfigmap(logger logr.Logger, amfDeploy *workloadv1alpha1.A
 		log.Log.Info("Interface N2 not found in NFDeployment Spec")
 		return nil, err
 	}
-	n11IP, err := getIPv4(amfDeploy.Spec.Interfaces, "N11")
-	if err != nil {
-		log.Log.Info("Interface N3 not found in NFDeployment Spec")
-		return nil, err
-	}
+//	n11IP, err := getIPv4(amfDeploy.Spec.Interfaces, "N11")
+//	if err != nil {
+//		log.Log.Info("Interface N3 not found in NFDeployment Spec")
+//		return nil, err
+//	}
 
 //	n6IP, err := getIntConfig(amfDeploy.Spec.Interfaces, "N6")
 //	if err != nil {
@@ -305,7 +305,7 @@ func free5gcAMFCreateConfigmap(logger logr.Logger, amfDeploy *workloadv1alpha1.A
 
 	amfcfgStruct := AMFcfgStruct{}
 	amfcfgStruct.N2_IP = n2IP
-	AMFcfgStruct.N11_IP = n11IP
+//	AMFcfgStruct.N11_IP = n11IP
 //	AMFcfgStruct.N6gw = string(*n6IP.IPv4.Gateway)
 
 //	n6Instances, ok := getNetworkInsance(AMFDeploy.Spec, "N6")

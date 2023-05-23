@@ -36,7 +36,6 @@ import (
 	"github.com/nephio-project/free5gc/controllers"
 	//+kubebuilder:scaffold:imports
 )
-
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
@@ -48,6 +47,7 @@ func init() {
 
 	// utilruntime.Must(workloadv1alpha1.AddToScheme(scheme))
 
+//	utilruntime.Must(workloadv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -99,11 +99,24 @@ func main() {
 		os.Exit(1)
 	}
 
+	schemeBuilder.Register(&workloadv1alpha1.AMFDeployment{}, &workloadv1alpha1.AMFDeploymentList{})
+	if err := schemeBuilder.AddToScheme(mgr.GetScheme()); err != nil {
+		setupLog.Error(err, "Not able to register AMFDeployment kind")
+		os.Exit(1)
+	}
+
 	if err = (&controllers.UPFDeploymentReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "UPFDeployment")
+		os.Exit(1)
+	}
+	if err = (&controllers.AMFDeploymentReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "AMFDeployment")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
