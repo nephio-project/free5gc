@@ -107,50 +107,27 @@ func TestGetSMFResourceParams(t *testing.T) {
 	}
 }
 
-// func TestConstructSMFNadName(t *testing.T) {
-// 	var tests = []struct {
-// 		args []string
-// 		want string
-// 	}{
-// 		{[]string{"test-smf-deployment", "pfcp"}, "test-upf-deployment-pfcp"},
-// 		{[]string{"test-smf-deployment", "n4"}, "test-upf-deployment-n4"},
-// 		{[]string{"test-smf-deployment", "n11"}, "test-upf-deployment-n11"},
-// 	}
-// 	for _, test := range tests {
-// 		if got := constructSMFNadName(test.args[0], test.args[1]); got != test.want {
-// 			t.Errorf("constructSMFNadNAme(%s, %s) = %v, want %s", test.args[0], test.args[1], got, test.want)
-// 		}
-// 	}
-// }
-
 func TestGetSMFNad(t *testing.T) {
 	smfDeploymentInstance := newSmfDeployInstance("test-smf-deployment")
 	got := getSMFNad("test-smf-deployment", &smfDeploymentInstance.DeepCopy().Spec)
 
-//        want := `[
-//                {"name": "test-smf-deployment-n4",
-//                 "interface": "n4",
-//                 "ips": ["10.10.11.10/24"],
-//                 "gateways": ["10.10.11.1"]
-//                }
-//            ]`
-
-	want := `[
-                {"name": "test-smf-deployment-n4",
-                 "interface": "n4",
-                 "ips": ["10.10.11.10/24"],
-                 "gateways": ["10.10.11.1"]
-                }
-            ]`
-
+        want := `[
+        {"name": "test-smf-deployment-n4",
+         "interface": "n4",
+	 "ips": ["10.10.11.10/24"],
+         "gateways": ["10.10.11.1"]
+        }
+    ]`
 	if got != want {
 		t.Errorf("getSMFNad(%v) returned %v, want %v", smfDeploymentInstance.Spec, got, want)
 	}
 }
 
-func TestFree5gcSMFCreateConfigmap(t *testing.T) {
+func TestFree5gcSMFCreateConfigMap(t *testing.T) {
 	log := log.FromContext(context.TODO())
+	
 	smfDeploymentInstance := newSmfDeployInstance("test-smf-deployment")
+	
 	got, err := free5gcSMFCreateConfigmap(log, smfDeploymentInstance)
 	if err != nil {
 		t.Errorf("free5gcSMFCreateConfigmap() returned unexpected error %v", err)
@@ -167,9 +144,20 @@ func TestFree5gcSMFCreateConfigmap(t *testing.T) {
 		t.Error("Could not parse SMFCfgTemplate template.")
 	}
 
+	smfueroutingTemplate := template.New("SMFCfg")
+	smfueroutingTemplate, _ = smfueroutingTemplate.Parse(Uerouting)
+	if err != nil {
+		t.Error("Could not parse Uerouting template.")
+	}
+
 	var smfcfg bytes.Buffer
 	if err := smfcfgTemplate.Execute(&smfcfg, smfcfgStruct); err != nil {
 		t.Error("Could not render SMFConfig template.")
+	}
+
+        var smf_uerouting bytes.Buffer
+	if err := smfueroutingTemplate.Execute(&smf_uerouting, smfcfgStruct); err != nil {
+		t.Error("Could not render smf_uerouting template.")
 	}
 
 	want := &apiv1.ConfigMap{
@@ -183,6 +171,7 @@ func TestFree5gcSMFCreateConfigmap(t *testing.T) {
 		},
 		Data: map[string]string{
 			"smfcfg.yaml": smfcfg.String(),
+			"uerouting.yaml": smf_uerouting.String(),
 		},
 	}
 	if !reflect.DeepEqual(got, want) {
