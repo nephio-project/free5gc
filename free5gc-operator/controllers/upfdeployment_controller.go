@@ -179,7 +179,7 @@ func (r *UPFDeploymentReconciler) checkNADexist(log logr.Logger, ctx context.Con
 	return true
 }
 
-func free5gcUPFDeployment(log logr.Logger, upfDeploy *workloadv1alpha1.UPFDeployment) (*appsv1.Deployment, error) {
+func free5gcUPFDeployment(log logr.Logger, configMapVersion string, upfDeploy *workloadv1alpha1.UPFDeployment) (*appsv1.Deployment, error) {
 	//TODO(jbelamaric): Update to use ImageConfig spec.ImagePaths["upf"],
 	upfImage := "towards5gs/free5gc-upf:v3.1.1"
 
@@ -192,8 +192,9 @@ func free5gcUPFDeployment(log logr.Logger, upfDeploy *workloadv1alpha1.UPFDeploy
 		return nil, err
 	}
 	instanceNadLabel := getNad(upfDeploy.ObjectMeta.Name, &spec)
-	instanceNad := make(map[string]string)
-	instanceNad["k8s.v1.cni.cncf.io/networks"] = instanceNadLabel
+	podAnnotations := make(map[string]string)
+	podAnnotations["workload.nephio.org/configMapVersion"] = configMapVersion
+	podAnnotations["k8s.v1.cni.cncf.io/networks"] = instanceNadLabel
 	securityContext := &apiv1.SecurityContext{
 		Capabilities: &apiv1.Capabilities{
 			Add:  []apiv1.Capability{"NET_ADMIN"},
@@ -214,7 +215,7 @@ func free5gcUPFDeployment(log logr.Logger, upfDeploy *workloadv1alpha1.UPFDeploy
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Annotations: instanceNad,
+					Annotations: podAnnotations,
 					Labels: map[string]string{
 						"name": instanceName,
 					},
@@ -471,9 +472,11 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// see if we are dealing with create or update
 	cmFound := false
 	configmapName := upfDeploy.ObjectMeta.Name + "-upf-configmap"
+	var configMapVersion string
 	currConfigmap := &apiv1.ConfigMap{}
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: configmapName, Namespace: namespace}, currConfigmap); err == nil {
 		cmFound = true
+		configMapVersion = currConfigmap.ResourceVersion
 	}
 
 	dmFound := false
@@ -494,6 +497,16 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				return reconcile.Result{}, err
 			}
 		}
+
+		if currDeployment.Spec.Template.Annotations["workload.nephio.org/configMapVersion"] != configMapVersion {
+			log.Info("ConfigMap has been updated. Rolling deployment pods.", "UPFDeployment.namespace", namespace, "UPFDeployment.name", upfDeploy.Name)
+			currDeployment.Spec.Template.Annotations["workload.nephio.org/configMapVersion"] = configMapVersion
+			if err := r.Update(ctx, currDeployment); err != nil {
+				log.Error(err, "Failed to update Deployment", "UPFDeployment.namespace", currDeployment.Namespace, "UPFDeployment.name", currDeployment.Name)
+				return reconcile.Result{}, err
+			}
+			return reconcile.Result{Requeue: true}, nil
+		}
 	}
 
 	// first set up the configmap
@@ -511,10 +524,11 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				log.Error(err, fmt.Sprintf("Error: failed to create configmap %s\n", err.Error()))
 				return reconcile.Result{}, err
 			}
+			configMapVersion = cm.ResourceVersion
 		}
 	}
 
-	if deployment, err := free5gcUPFDeployment(log, upfDeploy); err != nil {
+	if deployment, err := free5gcUPFDeployment(log, configMapVersion, upfDeploy); err != nil {
 		log.Error(err, fmt.Sprintf("Error: failed to generate deployment %s\n", err.Error()))
 		return reconcile.Result{}, err
 	} else {
