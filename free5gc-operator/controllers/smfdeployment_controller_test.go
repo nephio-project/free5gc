@@ -19,6 +19,7 @@ package controllers
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"html/template"
 	"reflect"
 	"testing"
@@ -111,15 +112,19 @@ func TestGetSMFNad(t *testing.T) {
 	smfDeploymentInstance := newSmfDeployInstance("test-smf-deployment")
 	got := getSMFNad("test-smf-deployment", &smfDeploymentInstance.DeepCopy().Spec)
 
-	want:= `[
-                {"name": "test-smf-deployment-n4",
-                 "interface": "n4",
-                 "ips": ["10.10.11.10/24"],
-                 "gateways": ["10.10.11.1"]
-                }
-            ]`
-        if got != want {
-		t.Errorf("getSMFNad(%v) returned %v, want %v", smfDeploymentInstance.Spec, got, want)
+	want := `[
+        {"name": "test-smf-deployment-n4",
+         "interface": "n4",
+         "ips": ["10.10.11.10/24"],
+         "gateways": ["10.10.11.1"]
+        }
+    ]`
+	if got != want {
+		t.Errorf("getSMFNad(%v) returned %v, want %v", smfDeploymentInstance, got, want)
+		fmt.Println("Got:")
+		fmt.Println(got)
+		fmt.Println("Want")
+		fmt.Println(want)
 	}
 }
 
@@ -153,7 +158,7 @@ func TestFree5gcSMFCreateConfigMap(t *testing.T) {
 		t.Error("Could not render SMFConfig template.")
 	}
 
-        var smf_uerouting bytes.Buffer
+	var smf_uerouting bytes.Buffer
 	if err := smfueroutingTemplate.Execute(&smf_uerouting, smfcfgStruct); err != nil {
 		t.Error("Could not render smf_uerouting template.")
 	}
@@ -168,7 +173,7 @@ func TestFree5gcSMFCreateConfigMap(t *testing.T) {
 			Namespace: smfDeploymentInstance.ObjectMeta.Namespace,
 		},
 		Data: map[string]string{
-			"smfcfg.yaml": smfcfg.String(),
+			"smfcfg.yaml":    smfcfg.String(),
 			"uerouting.yaml": smf_uerouting.String(),
 		},
 	}
@@ -437,9 +442,9 @@ func TestFree5gcSMFDeployment(t *testing.T) {
 						"k8s.v1.cni.cncf.io/networks": `[
         {"name": "test-smf-deployment-n4",
          "interface": "n4",
-	 "ips": ["10.10.11.10/24"],
+         "ips": ["10.10.11.10/24"],
          "gateways": ["10.10.11.1"]
-        } 
+        }
     ]`,
 					},
 					Labels: map[string]string{
@@ -450,7 +455,7 @@ func TestFree5gcSMFDeployment(t *testing.T) {
 					Containers: []apiv1.Container{
 						{
 							Name:            "smf",
-							Image:           "towards5gs/free5gc-smf:v3.1.1",
+							Image:           "towards5gs/free5gc-smf:v3.2.0",
 							ImagePullPolicy: "Always",
 							SecurityContext: &apiv1.SecurityContext{
 								Capabilities: &apiv1.Capabilities{
@@ -465,6 +470,8 @@ func TestFree5gcSMFDeployment(t *testing.T) {
 									ContainerPort: 8805,
 								},
 							},
+                                                        Command: []string{"./smf"},
+                                                        Args:    []string{"-c", "../config/smfcfg.yaml", "-u", "../config/uerouting.yaml"},
 							VolumeMounts: []apiv1.VolumeMount{
 								{
 									MountPath: "/free5gc/config/",
@@ -502,7 +509,7 @@ func TestFree5gcSMFDeployment(t *testing.T) {
 														Path: "smfcfg.yaml",
 													},
 													{
-														Key: "uerouting.yaml",
+														Key:  "uerouting.yaml",
 														Path: "uerouting.yaml",
 													},
 												},
@@ -517,6 +524,14 @@ func TestFree5gcSMFDeployment(t *testing.T) {
 			}, // PodTemplateSpec
 		}, // PodTemplateSpec
 	}
+
+	fmt.Println("Got:")
+	fmt.Println(got)
+	fmt.Println()
+	fmt.Println("Want:")
+	fmt.Println(want)
+	fmt.Println()
+
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("free5gcSMFDeployment(%v) returned %v, want %v", smfDeploymentInstance, got, want)
 	}
