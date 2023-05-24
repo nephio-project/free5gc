@@ -15,7 +15,15 @@ resources:
   domain: nephio.org
   group: workload
   kind: UPFDeployment
-  #path: github.com/nephio-project/free5gc/api/v1alpha1
   path: github.com/nephio-project/api/nf_deployments/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: nephio.org
+  group: workload
+  kind: AMFDeployment
+  path: github.com/nephio-project/free5gc/api/v1alpha1
   version: v1alpha1
 version: "3"
