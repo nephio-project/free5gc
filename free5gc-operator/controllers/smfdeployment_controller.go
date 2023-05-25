@@ -102,7 +102,6 @@ func getSMFResourceParams(smfSpec workloadv1alpha1.SMFDeploymentSpec) (int32, *a
 
 func constructSMFNadName(templateName string, suffix string) string {
 	return templateName + "-" + suffix
-	// return "n4"
 }
 
 // getSMFNad returns NAD label string composed based on the Nx interfaces configuration provided in SMFDeploymentSpec
