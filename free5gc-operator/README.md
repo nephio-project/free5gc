@@ -64,7 +64,7 @@ make run
 ```
 
 ### Deploy the controller
-Change image varible in Makefile:
+Change image variable in Makefile:
 
 ```sh
 REGISTRY ?= registry
@@ -126,7 +126,7 @@ ff5700ec5418: Layer already exists
 latest: digest: sha256:3e86a217e906ebfaef66dc7363698e59576c928768105d303d25c59706a01b4d size: 2402
 ```
 
-and finnaly deploy container to a kubernetes cluster
+and finally deploy container to a kubernetes cluster
 
 ```sh
 $ make deploy
