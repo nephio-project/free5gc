@@ -52,8 +52,6 @@ type SMFDeploymentReconciler struct {
 
 type SMFcfgStruct struct {
 	PFCP_IP string // N4
-	// N4_IP   string
-	// N11_IP  string
 }
 
 type SMFAnnotation struct {
