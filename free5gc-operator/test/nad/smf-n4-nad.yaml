@@ -2,7 +2,7 @@
 # Source: free5gc/charts/free5gc-upf/templates/upf-n4-nad.yaml
 #
 # Software Name : towards5gs-helm
-# SPDX-FileCopyrightText: Copyright (c) 2021 Orange
+# SPDX-FileCopyrightText: Copyright (c) 2023 The Nephio Authors.
 # SPDX-License-Identifier: Apache-2.0
 #
 # This software is distributed under the Apache License 2.0,
