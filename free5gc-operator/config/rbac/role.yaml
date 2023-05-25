@@ -60,6 +60,32 @@ rules:
 - apiGroups:
   - workload.nephio.org
   resources:
+  - smfdeployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - workload.nephio.org
+  resources:
+  - smfdeployments/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - workload.nephio.org
+  resources:
+  - smfdeployments/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - workload.nephio.org
+  resources:
   - upfdeployments
   verbs:
   - create
