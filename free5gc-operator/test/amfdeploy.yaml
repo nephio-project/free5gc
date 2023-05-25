@@ -1,0 +1,22 @@
+# TODO
+apiVersion: workload.nephio.org/v1alpha1
+kind: AMFDeployment
+metadata:
+  name: free5gc-amf-1
+  namespace: amf-1
+  annotations:
+    config.kubernetes.io/local-config: "false"
+spec:
+  capacity:
+    maxSubscribers: 1000
+  interfaces:
+    - name: n2
+      ipv4:
+        address: 10.10.10.10/24
+        gateway: 10.10.10.1
+      vlanID: 14
+  networkInstances:
+    - name: vpc-internal
+      interfaces:
+        - n2
+  configRefs:
