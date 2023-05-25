@@ -65,7 +65,7 @@ type SMFAnnotation struct {
 
 // Check string -> int/string -uint16 conversion
 func getSMFResourceParams(smfSpec workloadv1alpha1.SMFDeploymentSpec) (int32, *apiv1.ResourceRequirements, error) {
-	// Placeholder for Capacity calculation. Reqiurce requirements houlw be calculated based on DL, UL.
+	// Placeholder for Capacity calculation. Require requirements whould be calculated based on DL, UL.
 
 	// TODO: increase number of replicas based on NFDeployment.Capacity.MaxSessions
 	var replicas int32 = 1
