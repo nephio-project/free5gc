@@ -464,7 +464,7 @@ func TestCaclculasteStatusReplicaFailure(t *testing.T) {
 func TestFree5gcUPFDeployment(t *testing.T) {
 	log := log.FromContext(context.TODO())
 	upfDeploymentInstance := newUpfDeployInstance("test-upf-deployment")
-	got, err := free5gcUPFDeployment(log, upfDeploymentInstance)
+	got, err := free5gcUPFDeployment(log, "111111", upfDeploymentInstance)
 	if err != nil {
 		t.Errorf("free5gcUPFDeployment() returned unexpected error %v", err)
 	}
@@ -486,6 +486,7 @@ func TestFree5gcUPFDeployment(t *testing.T) {
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
+						"workload.nephio.org/configMapVersion": "111111",
 						"k8s.v1.cni.cncf.io/networks": `[
         {"name": "test-upf-deployment-n3",
          "interface": "N3",
