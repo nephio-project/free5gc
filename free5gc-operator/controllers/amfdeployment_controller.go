@@ -262,9 +262,9 @@ func free5gcAMFDeployment(log logr.Logger, amfDeploy *workloadv1alpha1.AMFDeploy
 								},
 							},
 
-							Command: []string{"./amf"},
-							Args:    []string{"-c", "../config/amfcfg.yaml"},
-
+							Command: []string{
+								"sh", "-c", "set -x; do while [ $(curl --insecure --connect-timeout 1 -s -o /dev/null -w \"%{http_code}\" \"http://nrf-nnrf:8000\") -ne 200 ]; do echo waiting for dependencies; sleep 1; done;",
+							},
 							VolumeMounts: []apiv1.VolumeMount{
 								{
 									MountPath: "/free5gc/config/",
