@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -262,9 +263,9 @@ func free5gcAMFDeployment(log logr.Logger, amfDeploy *workloadv1alpha1.AMFDeploy
 								},
 							},
 
-							Command: []string{
-								"sh", "-c", "set -x; do while [ $(curl --insecure --connect-timeout 1 -s -o /dev/null -w \"%{http_code}\" \"http://nrf-nnrf:8000\") -ne 200 ]; do echo waiting for dependencies; sleep 1; done;",
-							},
+							Command: []string{"./amf"},
+							Args:    []string{"-c", "../config/amfcfg.yaml"},
+
 							VolumeMounts: []apiv1.VolumeMount{
 								{
 									MountPath: "/free5gc/config/",
@@ -310,6 +311,34 @@ func free5gcAMFDeployment(log logr.Logger, amfDeploy *workloadv1alpha1.AMFDeploy
 		}, // PodTemplateSpec
 	}
 	return deployment, nil
+}
+
+func free5gcAMFCreateService(amfDeploy *workloadv1alpha1.AMFDeployment) *apiv1.Service {
+	namespace := amfDeploy.ObjectMeta.Namespace
+	instanceName := amfDeploy.ObjectMeta.Name
+
+	labels := map[string]string{
+		"name": instanceName,
+	}
+
+	service := &apiv1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instanceName + "-amf-svc",
+			Namespace: namespace,
+		},
+		Spec: apiv1.ServiceSpec{
+			Selector: labels,
+			Ports: []apiv1.ServicePort{{
+				Name:       "http",
+				Protocol:   apiv1.ProtocolTCP,
+				Port:       80,
+				TargetPort: intstr.FromInt(80),
+			}},
+			Type: apiv1.ServiceTypeClusterIP,
+		},
+	}
+
+	return service
 }
 
 func free5gcAMFCreateConfigmap(logger logr.Logger, amfDeploy *workloadv1alpha1.AMFDeployment) (*apiv1.ConfigMap, error) {
@@ -506,6 +535,13 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		cmFound = true
 	}
 
+	svcFound := false
+	svcName := amfDeploy.ObjectMeta.Name + "-amf-svc"
+	currSvc := &apiv1.Service{}
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: svcName, Namespace: namespace}, currSvc); err == nil {
+		svcFound = true
+	}
+
 	dmFound := false
 	dmName := amfDeploy.ObjectMeta.Name
 	currDeployment := &appsv1.Deployment{}
@@ -541,6 +577,19 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				log.Error(err, fmt.Sprintf("Error: failed to create configmap %s\n", err.Error()))
 				return reconcile.Result{}, err
 			}
+		}
+	}
+
+	if !svcFound {
+		svc := free5gcAMFCreateService(amfDeploy)
+		log.Info("Creating AMFDeployment service", "AMFDeployment.namespace", namespace, "Service.name", svc.ObjectMeta.Name)
+		// Set the controller reference, specifying that AMFDeployment controling underlying deployment
+		if err := ctrl.SetControllerReference(amfDeploy, svc, r.Scheme); err != nil {
+			log.Error(err, "Got error while setting Owner reference on AMF service.", "AMFDeployment.namespace", namespace)
+		}
+		if err := r.Client.Create(ctx, svc); err != nil {
+			log.Error(err, fmt.Sprintf("Error: failed to create an AMF service %s\n", err.Error()))
+			return reconcile.Result{}, err
 		}
 	}
 
