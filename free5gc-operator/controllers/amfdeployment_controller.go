@@ -135,7 +135,7 @@ func constructAMFNadName(templateName string, suffix string) string {
 func getAMFNad(templateName string, spec *workloadv1alpha1.AMFDeploymentSpec) string {
 	var ret string
 
-	n2CfgSlice := getIntConfigSlice(spec.Interfaces, "N2")
+	n2CfgSlice := getIntConfigSlice(spec.Interfaces, "n2")
 	//	n11CfgSlice := getIntConfigSlice(spec.Interfaces, "N11")
 	//	n4CfgSlice := getIntConfigSlice(spec.Interfaces, "N4")
 	//	n9CfgSlice := getIntConfigSlice(spec.Interfaces, "N9")
@@ -261,9 +261,10 @@ func free5gcAMFDeployment(log logr.Logger, amfDeploy *workloadv1alpha1.AMFDeploy
 									ContainerPort: 8805,
 								},
 							},
-							//	Command: []string{
-							//		"/free5gc/config//wrapper.sh",
-							//	},
+
+							Command: []string{"./amf"},
+							Args:    []string{"-c", "../config/amfcfg.yaml"},
+
 							VolumeMounts: []apiv1.VolumeMount{
 								{
 									MountPath: "/free5gc/config/",
