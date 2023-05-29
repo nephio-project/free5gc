@@ -468,9 +468,10 @@ func TestFree5gcAMFDeployment(t *testing.T) {
 									ContainerPort: 8805,
 								},
 							},
-							// Command: []string{
-							// 	"/free5gc/config//wrapper.sh",
-							// },
+							
+							Command: []string{"./amf"},
+                                                        Args:    []string{"-c", "../config/amfcfg.yaml"},
+
 							VolumeMounts: []apiv1.VolumeMount{
 								{
 									MountPath: "/free5gc/config/",
