@@ -35,7 +35,7 @@ func newAMFNxInterface(name string) workloadv1alpha1.InterfaceConfig {
 	case "n2":
 		gw := "10.10.10.1"
 		n2int := workloadv1alpha1.InterfaceConfig{
-			Name: "N2",
+			Name: "n2",
 			IPv4: &workloadv1alpha1.IPv4{
 				Address: "10.10.10.10/24",
 				Gateway: &gw,
@@ -50,7 +50,7 @@ func newAmfDeployInstance(name string) *workloadv1alpha1.AMFDeployment {
 	interfaces := []workloadv1alpha1.InterfaceConfig{}
 	n2int := newAMFNxInterface("n2")
 	interfaces = append(interfaces, n2int)
-	dnnName := "apn-test"
+	//dnnName := "apn-test"
 
 	amfDeployInstance := &workloadv1alpha1.AMFDeployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -72,7 +72,7 @@ func newAmfDeployInstance(name string) *workloadv1alpha1.AMFDeployment {
 					{
 						Name: "vpc-internet",
 						Interfaces: []string{
-							"N2",
+							"n2",
 						},
 						DataNetworks: []workloadv1alpha1.DataNetwork{
 							{
@@ -140,7 +140,7 @@ func TestGetAMFNad(t *testing.T) {
 
 	want := `[
         {"name": "test-amf-deployment-n2",
-         "interface": "N2",
+         "interface": "n2",
          "ips": ["10.10.10.10/24"],
          "gateways": ["10.10.10.1"]
         }
@@ -159,7 +159,7 @@ func TestFree5gcAMFCreateConfigmap(t *testing.T) {
 		t.Errorf("free5gcAMFCreateConfigmap() returned unexpected error %v", err)
 	}
 
-	n2IP, _ := getIPv4(amfDeploymentInstance.Spec.Interfaces, "N2")
+	n2IP, _ := getIPv4(amfDeploymentInstance.Spec.Interfaces, "n2")
 
 	amfcfgStruct := AMFcfgStruct{}
 	amfcfgStruct.N2_IP = n2IP
@@ -439,7 +439,7 @@ func TestFree5gcAMFDeployment(t *testing.T) {
 					Annotations: map[string]string{
 						"k8s.v1.cni.cncf.io/networks": `[
         {"name": "test-amf-deployment-n2",
-         "interface": "N2",
+         "interface": "n2",
          "ips": ["10.10.10.10/24"],
          "gateways": ["10.10.10.1"]
         }

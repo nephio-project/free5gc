@@ -102,17 +102,14 @@ func main() {
 	schemeBuilder.Register(&workloadv1alpha1.SMFDeployment{}, &workloadv1alpha1.SMFDeploymentList{})
 	if err := schemeBuilder.AddToScheme(mgr.GetScheme()); err != nil {
 		setupLog.Error(err, "Not able to register SMFDeployment kind")
+		os.Exit(1)
+	}
     
-  schemeBuilder.Register(&workloadv1alpha1.AMFDeployment{}, &workloadv1alpha1.AMFDeploymentList{})
+  	schemeBuilder.Register(&workloadv1alpha1.AMFDeployment{}, &workloadv1alpha1.AMFDeploymentList{})
 	if err := schemeBuilder.AddToScheme(mgr.GetScheme()); err != nil {
 		setupLog.Error(err, "Not able to register AMFDeployment kind")
 		os.Exit(1)
 	}
-<<<<<<< HEAD
-		os.Exit(1)
-	}
-=======
->>>>>>> 0a7978e (conflict files modified)
 
 	if err = (&controllers.UPFDeploymentReconciler{
 		Client: mgr.GetClient(),
@@ -122,7 +119,6 @@ func main() {
 		os.Exit(1)
 	}
 
-<<<<<<< HEAD
 	if err = (&controllers.SMFDeploymentReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
@@ -131,19 +127,13 @@ func main() {
 		os.Exit(1)
 	}
   
-  if err = (&controllers.AMFDeploymentReconciler{
-=======
 	if err = (&controllers.AMFDeploymentReconciler{
->>>>>>> 0a7978e (conflict files modified)
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AMFDeployment")
-<<<<<<< HEAD
-=======
 		os.Exit(1)
 	}
->>>>>>> 0a7978e (conflict files modified)
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
