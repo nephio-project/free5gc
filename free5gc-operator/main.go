@@ -104,6 +104,12 @@ func main() {
 		setupLog.Error(err, "Not able to register SMFDeployment kind")
 		os.Exit(1)
 	}
+    
+  	schemeBuilder.Register(&workloadv1alpha1.AMFDeployment{}, &workloadv1alpha1.AMFDeploymentList{})
+	if err := schemeBuilder.AddToScheme(mgr.GetScheme()); err != nil {
+		setupLog.Error(err, "Not able to register AMFDeployment kind")
+		os.Exit(1)
+	}
 
 	if err = (&controllers.UPFDeploymentReconciler{
 		Client: mgr.GetClient(),
@@ -118,6 +124,14 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SMFDeployment")
+		os.Exit(1)
+	}
+  
+	if err = (&controllers.AMFDeploymentReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "AMFDeployment")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
