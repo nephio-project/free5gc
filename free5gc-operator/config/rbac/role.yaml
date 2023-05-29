@@ -60,7 +60,10 @@ rules:
 - apiGroups:
   - workload.nephio.org
   resources:
+<<<<<<< HEAD
   - smfdeployments
+=======
+>>>>>>> 0a7978e (conflict files modified)
   - amfdeployments
   verbs:
   - create
