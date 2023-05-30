@@ -1,4 +1,4 @@
-GO_VERSION ?= 1.20.2
+GO_VERSION ?= 1.20.4
 GOLANG_CI_VER ?= v1.52
 GOSEC_VER ?= 2.15.0
 TEST_COVERAGE_FILE=lcov.info
@@ -21,7 +21,7 @@ else
 KUBECTL="microk8s kubectl"
 endif
 
-REGISTRY ?= docker.io/daleksandrov
+REGISTRY ?= docker.io/nephio
 PROJECT ?= free5gc-operator
 TAG ?= latest
 CONTROLLER_NAME ?= $(PROJECT)-controller

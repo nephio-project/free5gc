@@ -470,8 +470,8 @@ func TestFree5gcSMFDeployment(t *testing.T) {
 									ContainerPort: 8805,
 								},
 							},
-                                                        Command: []string{"./smf"},
-                                                        Args:    []string{"-c", "../config/smfcfg.yaml", "-u", "../config/uerouting.yaml"},
+							Command: []string{"./smf"},
+							Args:    []string{"-c", "../config/smfcfg.yaml", "-u", "../config/uerouting.yaml"},
 							VolumeMounts: []apiv1.VolumeMount{
 								{
 									MountPath: "/free5gc/config/",
