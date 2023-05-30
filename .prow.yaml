@@ -1,7 +1,7 @@
 presubmits:
   - name: f5gc-operator-unit-test
     decorate: true
-    run_if_changed: "^free5gc-operator/.*.go$"
+    run_if_changed: "^.*.go$"
     spec:
       containers:
       - image: nephio/gotests:4
@@ -10,11 +10,11 @@ presubmits:
         args:
         - "-c"
         - |
-          cd free5gc-operator/ && make unit
+          make unit
 
   - name: f5gc-operator-lint
     decorate: true
-    run_if_changed: "^free5gc-operator/.*.go$"
+    run_if_changed: "^.*.go$"
     spec:
       containers:
       - image: nephio/gotests:4
@@ -23,11 +23,11 @@ presubmits:
         args:
         - "-c"
         - |
-          cd free5gc-operator/ && make lint
+          make lint
 
   - name: f5gc-operator-gosec
     decorate: true
-    run_if_changed: "^free5gc-operator/.*.go$"
+    run_if_changed: "^.*.go$"
     spec:
       containers:
       - image: nephio/gotests:4
@@ -36,7 +36,7 @@ presubmits:
         args:
         - "-c"
         - |
-          cd free5gc-operator/ && make gosec
+          make gosec
 
   - name: f5gc-operator-license-header-check
     decorate: true
@@ -49,4 +49,4 @@ presubmits:
         args:
         - "-c"
         - |
-          cd free5gc-operator/ && "/usr/local/bin/checklicense.sh"
+          "/usr/local/bin/checklicense.sh"

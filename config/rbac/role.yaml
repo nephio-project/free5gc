@@ -60,10 +60,32 @@ rules:
 - apiGroups:
   - workload.nephio.org
   resources:
-<<<<<<< HEAD
-  - smfdeployments
-=======
->>>>>>> 0a7978e (conflict files modified)
+  - AMFdeployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - workload.nephio.org
+  resources:
+  - AMFdeployments/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - workload.nephio.org
+  resources:
+  - AMFdeployments/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - workload.nephio.org
+  resources:
   - amfdeployments
   verbs:
   - create
@@ -76,16 +98,39 @@ rules:
 - apiGroups:
   - workload.nephio.org
   resources:
-
-  - smfdeployments/finalizers
   - amfdeployments/finalizers
   verbs:
   - update
 - apiGroups:
   - workload.nephio.org
   resources:
-  - smfdeployments/status
   - amfdeployments/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - workload.nephio.org
+  resources:
+  - smfdeployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - workload.nephio.org
+  resources:
+  - smfdeployments/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - workload.nephio.org
+  resources:
+  - smfdeployments/status
   verbs:
   - get
   - patch

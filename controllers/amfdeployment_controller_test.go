@@ -68,26 +68,26 @@ func newAmfDeployInstance(name string) *workloadv1alpha1.AMFDeployment {
 					MaxNFConnections:      2000,
 				},
 				Interfaces: interfaces,
-//				NetworkInstances: []workloadv1alpha1.NetworkInstance{
-//					{
-//						Name: "vpc-internet",
-//						Interfaces: []string{
-//							"n2",
-//						},
-//						DataNetworks: []workloadv1alpha1.DataNetwork{
-//							{
-//								Name: &dnnName,
-//								Pool: []workloadv1alpha1.Pool{
-//									{
-//										Prefix: "100.100.0.0/16",
-//									},
-//								},
-//							},
-//						},
-//						BGP:   nil,
-//						Peers: []workloadv1alpha1.PeerConfig{},
-//					},
-//				},
+				//				NetworkInstances: []workloadv1alpha1.NetworkInstance{
+				//					{
+				//						Name: "vpc-internet",
+				//						Interfaces: []string{
+				//							"n2",
+				//						},
+				//						DataNetworks: []workloadv1alpha1.DataNetwork{
+				//							{
+				//								Name: &dnnName,
+				//								Pool: []workloadv1alpha1.Pool{
+				//									{
+				//										Prefix: "100.100.0.0/16",
+				//									},
+				//								},
+				//							},
+				//						},
+				//						BGP:   nil,
+				//						Peers: []workloadv1alpha1.PeerConfig{},
+				//					},
+				//				},
 			},
 		},
 	}
@@ -468,9 +468,9 @@ func TestFree5gcAMFDeployment(t *testing.T) {
 									ContainerPort: 8805,
 								},
 							},
-							
+
 							Command: []string{"./amf"},
-                                                        Args:    []string{"-c", "../config/amfcfg.yaml"},
+							Args:    []string{"-c", "../config/amfcfg.yaml"},
 
 							VolumeMounts: []apiv1.VolumeMount{
 								{
