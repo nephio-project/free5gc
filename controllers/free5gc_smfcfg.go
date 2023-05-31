@@ -29,21 +29,21 @@ configuration:
         sst: 1
         sd: 010203
       dnnInfos:
-        - dnn: internet
+        - dnn: {{ $dnn.Name }}
           dns:
             ipv4: {{ .DNS_IP }}
     - sNssai:
         sst: 1
         sd: 112233
       dnnInfos:
-        - dnn: internet
+        - dnn: {{ $dnn.Name }}
           dns:
             ipv4: {{ .DNS_IP }}
     - sNssai:
         sst: 2
         sd: 112234
       dnnInfos:
-        - dnn: internet
+        - dnn: {{ $dnn.Name }}
           dns:
             ipv4: {{ .DNS_IP }}
   plmnList:
