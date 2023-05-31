@@ -69,3 +69,16 @@ func getNetworkInsance(upfspec workloadv1alpha1.UPFDeploymentSpec, interfaceName
 
 	return ret, true
 }
+
+func getSMFNetworkInsances(smfspec workloadv1alpha1.SMFDeploymentSpec) ([]workloadv1alpha1.NetworkInstance, bool) {
+	ret := []workloadv1alpha1.NetworkInstance{}
+	for _, netInstance := range smfspec.NetworkInstances {
+		ret = append(ret, netInstance)
+	}
+
+	if len(ret) == 0 {
+		return ret, false
+	}
+
+	return ret, true
+}
