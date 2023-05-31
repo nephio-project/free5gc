@@ -44,14 +44,13 @@ import (
 	workloadv1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
 )
 
-// SMFDeploymentReconciler reconciles a SMFDeployment object
 type SMFDeploymentReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
 
 type SMFcfgStruct struct {
-	PFCP_IP string // N4
+	PFCP_IP string 
 }
 
 type SMFAnnotation struct {
@@ -61,19 +60,14 @@ type SMFAnnotation struct {
 	Gateway   string `json:"gateway"`
 }
 
-// Check string -> int/string -uint16 conversion
 func getSMFResourceParams(smfSpec workloadv1alpha1.SMFDeploymentSpec) (int32, *apiv1.ResourceRequirements, error) {
-	// Placeholder for Capacity calculation. Require requirements whould be calculated based on DL, UL.
-
-	// TODO: increase number of replicas based on NFDeployment.Capacity.MaxSessions
+	// TODO: Increase number of replicas based on NFDeployment.Capacity.MaxSessions
 	var replicas int32 = 1
 	var cpuLimit string
 	var cpuRequest string
 	var memoryLimit string
 	var memoryRequest string
-
-	// spec.Capacity.MaxSessions <1000 -> 128Mi
-	// spec.Capacity.MaxNFConnections <10 -> 128Mi
+	
 	if smfSpec.Capacity.MaxSessions < 1000 && smfSpec.Capacity.MaxNFConnections < 10 {
 		cpuLimit = "100m"
 		cpuRequest = "100m"
@@ -102,23 +96,16 @@ func constructSMFNadName(templateName string, suffix string) string {
 	return templateName + "-" + suffix
 }
 
-// getSMFNad returns NAD label string composed based on the Nx interfaces configuration provided in SMFDeploymentSpec
 func getSMFNad(templateName string, spec *workloadv1alpha1.SMFDeploymentSpec) string {
 	var ret string
 
-	// n6CfgSlice := getIntConfigSlice(spec.Interfaces, "N6")
-	// n3CfgSlice := getIntConfigSlice(spec.Interfaces, "N3")
 	n4CfgSlice := getIntConfigSlice(spec.Interfaces, "n4")
-	// n9CfgSlice := getIntConfigSlice(spec.Interfaces, "N9")
 
 	ret = `[`
 	intfMap := map[string][]workloadv1alpha1.InterfaceConfig{
-		// "n3": n3CfgSlice,
 		"n4": n4CfgSlice,
-		// "n6": n6CfgSlice,
-		// "n9": n9CfgSlice,
 	}
-	// Need to sort inftMap by key otherwise unitTests might fail as order of intefaces in intfMap is not guaranteed
+	// Need to sort inftMap by key otherwise unitTests might fail as interface order in intfMap is not guaranteed
 	inftMapKeys := make([]string, 0, len(intfMap))
 	for interfaceName := range intfMap {
 		inftMapKeys = append(inftMapKeys, interfaceName)
@@ -145,18 +132,8 @@ func getSMFNad(templateName string, spec *workloadv1alpha1.SMFDeploymentSpec) st
 	ret = ret + `
     ]`
 	return ret
-
-	// return `[
-	//     {"name": "free5gc-smf-1-n4",
-	//      "interface": "n4",
-	//     },
-	// ]`
-
 }
 
-// checkNADExists gets deployment object and checks "k8s.v1.cni.cncf.io/networks" NADs.
-// returns True if all requred NADs are present
-// returns False if any NAD doesn't exists in deployment namespace
 func (r *SMFDeploymentReconciler) checkSMFNADexist(log logr.Logger, ctx context.Context, deployment *appsv1.Deployment) bool {
 	smfAnnotations := []SMFAnnotation{}
 	annotationsString, ok := deployment.Spec.Template.GetAnnotations()["k8s.v1.cni.cncf.io/networks"]
@@ -187,7 +164,6 @@ func (r *SMFDeploymentReconciler) checkSMFNADexist(log logr.Logger, ctx context.
 
 func free5gcSMFDeployment(log logr.Logger, smfDeploy *workloadv1alpha1.SMFDeployment) (*appsv1.Deployment, error) {
 	//TODO(jbelamaric): Update to use ImageConfig spec.ImagePaths["smf"],
-	// smfImage := "nephio/free5gc-smf:latest"
 	smfImage := "towards5gs/free5gc-smf:v3.2.0"
 
 	instanceName := smfDeploy.ObjectMeta.Name
@@ -287,9 +263,6 @@ func free5gcSMFDeployment(log logr.Logger, smfDeploy *workloadv1alpha1.SMFDeploy
 	return deployment, nil
 }
 
-// Check for UERoute in SMFConfigMap yaml
-// https://github.com/s3wong/free5gc/blob/main/doc/sample-manifests/smf.yaml#L122
-// https://github.com/s3wong/free5gc/blob/main/doc/sample-manifests/smf.yaml#L272
 func free5gcSMFCreateConfigmap(logger logr.Logger, smfDeploy *workloadv1alpha1.SMFDeployment) (*apiv1.ConfigMap, error) {
 	namespace := smfDeploy.ObjectMeta.Namespace
 	instanceName := smfDeploy.ObjectMeta.Name
@@ -303,113 +276,6 @@ func free5gcSMFCreateConfigmap(logger logr.Logger, smfDeploy *workloadv1alpha1.S
 	smfcfgStruct := SMFcfgStruct{}
 	smfcfgStruct.PFCP_IP = n4IP
 
-	/*
-			apiVersion: v1
-		kind: ConfigMap
-		metadata:
-		  name: smf-configmap
-		  labels:
-		    app: free5gc
-		data:
-		  smfcfg.yaml: |
-		    info:
-		      version: 1.0.2
-		      description: SMF initial local configuration
-
-		    configuration:
-		      serviceNameList:
-		        - nsmf-pdusession
-		        - nsmf-event-exposure
-		        - nsmf-oam
-
-		      sbi:
-		        scheme: http
-		        registerIPv4: smf-nsmf # IP used to register to NRF
-		        bindingIPv4: 0.0.0.0  # IP used to bind the service
-		        port: 80
-		        tls:
-		          key: config/TLS/smf.key
-		          pem: config/TLS/smf.pem
-
-		      nrfUri: http://nrf-nnrf:8000
-
-		      pfcp:
-		        addr: 10.100.50.244
-		      smfName: SMF
-		      snssaiInfos:
-		        - sNssai:
-		            sst: 1
-		            sd: 010203
-		          dnnInfos: # DNN information list
-		            - dnn: internet # Data Network Name
-		              dns: # the IP address of DNS
-		                ipv4: 8.8.8.8
-		        - sNssai:
-		            sst: 1
-		            sd: 112233
-		          dnnInfos: # DNN information list
-		            - dnn: internet # Data Network Name
-		              dns: # the IP address of DNS
-		                ipv4: 8.8.8.8
-		        - sNssai:
-		            sst: 2
-		            sd: 112234
-		          dnnInfos:
-		            - dnn: internet
-		              dns:
-		                ipv4: 8.8.8.8
-		      plmnList: # the list of PLMN IDs that this SMF belongs to (optional, remove this key when unnecessary)
-		        - mcc: "208" # Mobile Country Code (3 digits string, digit: 0~9)
-		          mnc: "93" # Mobile Network Code (2 or 3 digits string, digit: 0~9)
-		      userplaneInformation: # list of userplane information
-		        upNodes: # information of userplane node (AN or UPF)
-		          gNB1: # the name of the node
-		            type: AN # the type of the node (AN or UPF)
-		          UPF:  # the name of the node
-		            type: UPF # the type of the node (AN or UPF)
-		            nodeID: 10.100.50.241 # the IP/FQDN of N4 interface on this UPF (PFCP)
-		            sNssaiUpfInfos: # S-NSSAI information list for this UPF
-		                  - sNssai: # S-NSSAI (Single Network Slice Selection Assistance Information)
-		                      sst: 1 # Slice/Service Type (uinteger, range: 0~255)
-		                      sd: 010203 # Slice Differentiator (3 bytes hex string, range: 000000~FFFFFF)
-		                    dnnUpfInfoList: # DNN information list for this S-NSSAI
-		                      - dnn: internet
-		                        pools:
-		                          - cidr: 10.1.0.0/17
-		                  - sNssai: # S-NSSAI (Single Network Slice Selection Assistance Information)
-		                      sst: 1 # Slice/Service Type (uinteger, range: 0~255)
-		                      sd: 112233 # Slice Differentiator (3 bytes hex string, range: 000000~FFFFFF)
-		                    dnnUpfInfoList: # DNN information list for this S-NSSAI
-		                      - dnn: internet
-		                        pools:
-		                          - cidr: 10.1.128.0/17
-		            interfaces: # Interface list for this UPF
-		                  - interfaceType: N3 # the type of the interface (N3 or N9)
-		                    endpoints: # the IP address of this N3/N9 interface on this UPF
-		                      - 10.100.50.233
-		                    networkInstance: internet # Data Network Name (DNN)
-		        links: # the topology graph of userplane, A and B represent the two nodes of each link
-		          - A: gNB1
-		            B: UPF
-		      locality: area1 # Name of the location where a set of AMF, SMF and UPFs are located
-
-		    logger:
-		      Aper:
-		        ReportCaller: false
-		        debugLevel: info
-		      NAS:
-		        ReportCaller: false
-		        debugLevel: info
-		      NGAP:
-		        ReportCaller: false
-		        debugLevel: info
-		      PFCP:
-		        ReportCaller: false
-		        debugLevel: info
-		      SMF:
-		        ReportCaller: false
-		        debugLevel: info
-	*/
 	smfcfgTemplate := template.New("SMFCfg")
 	smfcfgTemplate, err = smfcfgTemplate.Parse(SMFCfgTemplate)
 	if err != nil {
@@ -457,7 +323,6 @@ func (r *SMFDeploymentReconciler) syncSMFStatus(ctx context.Context, d *appsv1.D
 	newSMFStatus, update := calculateSMFStatus(d, smfDeploy)
 
 	if update {
-		// Update SMFDeployment status according to underlying deployment status
 		newSmf := smfDeploy
 		newSmf.Status.NFDeploymentStatus = newSMFStatus
 		err := r.Status().Update(ctx, newSmf)
@@ -474,7 +339,6 @@ func calculateSMFStatus(deployment *appsv1.Deployment, smfDeploy *workloadv1alph
 	}
 	condition := metav1.Condition{}
 
-	// Return initial status if there are no status update happened for the SMFdeployment
 	if len(smfDeploy.Status.Conditions) == 0 {
 		condition.Type = string(workloadv1alpha1.Reconciling)
 		condition.Status = metav1.ConditionFalse
@@ -490,16 +354,13 @@ func calculateSMFStatus(deployment *appsv1.Deployment, smfDeploy *workloadv1alph
 		return smfStatus, false
 	}
 
-	// Check the last underlying Deployment status and deduct condition from it.
 	lastDeploymentStatus := deployment.Status.Conditions[0]
 	lastSMFDeploymentStatus := smfDeploy.Status.Conditions[len(smfDeploy.Status.Conditions)-1]
 
-	// Deployemnt and SMFDeployment have different names for processing state, hence we check if one is processing another is reconciling, then state is equal
 	if lastDeploymentStatus.Type == appsv1.DeploymentProgressing && lastSMFDeploymentStatus.Type == string(workloadv1alpha1.Reconciling) {
 		return smfStatus, false
 	}
 
-	// if both status types are Available, don't update.
 	if string(lastDeploymentStatus.Type) == string(lastSMFDeploymentStatus.Type) {
 		return smfStatus, false
 	}
@@ -564,7 +425,6 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	namespace := smfDeploy.ObjectMeta.Namespace
-	// see if we are dealing with create or update
 	cmFound := false
 	configmapName := smfDeploy.ObjectMeta.Name + "-smf-configmap"
 	currConfigmap := &apiv1.ConfigMap{}
@@ -581,9 +441,6 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	if dmFound {
 		d := currDeployment.DeepCopy()
-
-		// Updating SMFDeployment status. On the first sets the first Condition to Reconciling.
-		// On the subsequent runs it gets undelying depoyment Conditions and use the last one to decide if status has to be updated.
 		if d.DeletionTimestamp == nil {
 			if err := r.syncSMFStatus(ctx, d, smfDeploy); err != nil {
 				log.Error(err, "Failed to update SMFDeployment status", "SMFDeployment.namespace", namespace, "sMFDeployment.name", smfDeploy.Name)
@@ -592,14 +449,12 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
-	// first set up the configmap
 	if cm, err := free5gcSMFCreateConfigmap(log, smfDeploy); err != nil {
 		log.Error(err, fmt.Sprintf("Error: failed to generate configmap %s\n", err.Error()))
 		return reconcile.Result{}, err
 	} else {
 		if !cmFound {
 			log.Info("Creating SMFDeployment configmap", "SMFDeployment.namespace", namespace, "Confirmap.name", cm.ObjectMeta.Name)
-			// Set the controller reference, specifying that SMFDeployment controling underlying deployment
 			if err := ctrl.SetControllerReference(smfDeploy, cm, r.Scheme); err != nil {
 				log.Error(err, "Got error while setting Owner reference on configmap.", "SMFDeployment.namespace", namespace)
 			}
@@ -615,12 +470,10 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return reconcile.Result{}, err
 	} else {
 		if !dmFound {
-			// only create deployment in case all required NADs are present. Otherwse Requeue in 10 sec.
 			if ok := r.checkSMFNADexist(log, ctx, deployment); !ok {
 				log.Info("Not all NetworkAttachDefinitions available in current namespace. Requeue in 10 sec.", "SMFDeployment.namespace", namespace)
 				return reconcile.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
 			} else {
-				// Set the controller reference, specifying that sMFDeployment controling underlying deployment
 				if err := ctrl.SetControllerReference(smfDeploy, deployment, r.Scheme); err != nil {
 					log.Error(err, "Got error while setting Owner reference on deployment.", "SMFDeployment.namespace", namespace)
 				}
@@ -635,7 +488,6 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	return reconcile.Result{}, nil
 }
 
-// SetupWithManager sets up the controller with the Manager.
 func (r *SMFDeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&workloadv1alpha1.SMFDeployment{}).
