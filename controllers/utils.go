@@ -73,3 +73,9 @@ func getAMFNetworkInstances(amfspec workloadv1alpha1.AMFDeploymentSpec) ([]workl
 	ret := []workloadv1alpha1.NetworkInstance{}
 	for _, netInstance := range amfspec.NetworkInstances {
 		ret = append(ret, netInstance)
+	}
+	if len(ret) == 0 {
+		return ret, false
+	}
+	return ret, true
+}
