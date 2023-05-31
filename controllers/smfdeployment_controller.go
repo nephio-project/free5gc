@@ -51,7 +51,7 @@ type SMFDeploymentReconciler struct {
 
 type SMFcfgStruct struct {
 	PFCP_IP string 
-	DNS_IP string
+	DNN_LIST []workloadv1alpha1.NetworkInstance
 }
 
 type SMFAnnotation struct {
@@ -287,6 +287,12 @@ func free5gcSMFCreateConfigmap(logger logr.Logger, smfDeploy *workloadv1alpha1.S
 		return nil, err
 	}
 
+	networkInstances, aBool := getSMFNetworkInstances(smfspec workloadv1alpha1.SMFDeploymentSpec)
+	if aBool != false {
+		smfcfgStruct.DNN_LIST = networkInstances
+	}
+	
+	
 	smfueroutingTemplate := template.New("SMFCfg")
 	smfueroutingTemplate, _ = smfueroutingTemplate.Parse(Uerouting)
 	if err != nil {
