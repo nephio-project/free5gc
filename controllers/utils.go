@@ -69,10 +69,14 @@ func getNetworkInsance(upfspec workloadv1alpha1.UPFDeploymentSpec, interfaceName
 
 	return ret, true
 }
-func getAMFNetworkInstances(amfspec workloadv1alpha1.AMFDeploymentSpec) ([]workloadv1alpha1.NetworkInstance, bool) {
+func getAMFNetworkInstances(amfspec workloadv1alpha1.AMFDeploymentSpec, interfaceName string) ([]workloadv1alpha1.NetworkInstance, bool) {
 	ret := []workloadv1alpha1.NetworkInstance{}
 	for _, netInstance := range amfspec.NetworkInstances {
-		ret = append(ret, netInstance)
+		for _, intf := range netInstance.Interfaces {
+			if intf == interfaceName {
+				ret = append(ret, netInstance)
+			}
+		}
 	}
 	if len(ret) == 0 {
 		return ret, false
