@@ -51,6 +51,7 @@ type SMFDeploymentReconciler struct {
 
 type SMFcfgStruct struct {
 	PFCP_IP string 
+	DNS_IP string
 }
 
 type SMFAnnotation struct {
@@ -175,8 +176,6 @@ func free5gcSMFDeployment(log logr.Logger, configMapVersion string, upfDeploy *w
 		return nil, err
 	}
 	instanceNadLabel := getSMFNad(smfDeploy.ObjectMeta.Name, &smfSpec)
-// 	instanceNad := make(map[string]string)
-// 	instanceNad["k8s.v1.cni.cncf.io/networks"] = instanceNadLabel
 	podAnnotations := make(map[string]string)
 	podAnnotations["workload.nephio.org/configMapVersion"] = configMapVersion
 	podAnnotations["k8s.v1.cni.cncf.io/networks"] = instanceNadLabel
