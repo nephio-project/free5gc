@@ -169,7 +169,7 @@ func (r *AMFDeploymentReconciler) checkAMFNADexist(log logr.Logger, ctx context.
 	return true
 }
 
-func free5gcAMFDeployment(log logr.Logger, configMapVersion string, upfDeploy *workloadv1alpha1.UPFDeployment) (*appsv1.Deployment, error) {
+func free5gcAMFDeployment(log logr.Logger, configMapVersion string, amfDeploy *workloadv1alpha1.AMFDeployment) (*appsv1.Deployment, error) {
 	
 	amfImage := "towards5gs/free5gc-amf:v3.2.0"
 
@@ -205,7 +205,7 @@ func free5gcAMFDeployment(log logr.Logger, configMapVersion string, upfDeploy *w
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Annotations: instanceNad,
+					//Annotations: instanceNad,
 					Annotations: podAnnotations,
 					Labels: map[string]string{
 						"name": instanceName,
@@ -516,7 +516,7 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
-	if deployment, err := free5gcAMFDeployment(log, configMapVersion, upfDeploy); err != nil {
+	if deployment, err := free5gcAMFDeployment(log, configMapVersion, amfDeploy); err != nil {
 		log.Error(err, fmt.Sprintf("Error: failed to generate deployment %s\n", err.Error()))
 		return reconcile.Result{}, err
 	} else {
