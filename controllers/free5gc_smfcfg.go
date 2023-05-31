@@ -31,21 +31,21 @@ configuration:
       dnnInfos:
         - dnn: internet
           dns:
-            ipv4: 8.8.8.8
+            ipv4: {{ .DNS_IP }}
     - sNssai:
         sst: 1
         sd: 112233
       dnnInfos:
         - dnn: internet
           dns:
-            ipv4: 8.8.8.8
+            ipv4: {{ .DNS_IP }}
     - sNssai:
         sst: 2
         sd: 112234
       dnnInfos:
         - dnn: internet
           dns:
-            ipv4: 8.8.8.8
+            ipv4: {{ .DNS_IP }}
   plmnList:
     - mcc: "208"
       mnc: "93"
@@ -61,16 +61,16 @@ configuration:
               sst: 1
               sd: 010203
             dnnUpfInfoList:
-              - dnn: internet
+              - dnn: {{ $dnn.Name }}
                 pools:
-                  - cidr: 10.1.0.0/17
+                  - cidr: {{(index $dnn.Pool 0).Prefix}}
           - sNssai:
               sst: 1
               sd: 112233
             dnnUpfInfoList:
-              - dnn: internet
+              - dnn: {{ $dnn.Name }}
                 pools:
-                  - cidr: 10.1.128.0/17
+                  - cidr: {{(index $dnn.Pool 0).Prefix}}
         interfaces:
           - interfaceType: N3
             endpoints:
