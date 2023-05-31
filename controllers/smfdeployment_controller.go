@@ -267,6 +267,35 @@ func free5gcSMFDeployment(log logr.Logger, configMapVersion string, upfDeploy *w
 	return deployment, nil
 }
 
+func free5gcSMFCreateService(smfDeploy *workloadv1alpha1.SMFDeployment) *apiv1.Service {
+	namespace := smfDeploy.ObjectMeta.Namespace
+	instanceName := smfDeploy.ObjectMeta.Name
+
+	labels := map[string]string{
+		"name": instanceName,
+	}
+
+	service := &apiv1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "smf-nsmf",
+			Namespace: namespace,
+		},
+		Spec: apiv1.ServiceSpec{
+			Selector: labels,
+			Ports: []apiv1.ServicePort{{
+				Name:       "http",
+				Protocol:   apiv1.ProtocolTCP,
+				Port:       80,
+				TargetPort: intstr.FromInt(80),
+			}},
+			Type: apiv1.ServiceTypeClusterIP,
+		},
+	}
+
+	return service
+}
+
+
 func free5gcSMFCreateConfigmap(logger logr.Logger, smfDeploy *workloadv1alpha1.SMFDeployment) (*apiv1.ConfigMap, error) {
 	namespace := smfDeploy.ObjectMeta.Namespace
 	instanceName := smfDeploy.ObjectMeta.Name
@@ -435,6 +464,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	namespace := smfDeploy.ObjectMeta.Namespace
+	
 	cmFound := false
 	configmapName := smfDeploy.ObjectMeta.Name + "-smf-configmap"
 	var configMapVersion string
@@ -444,6 +474,13 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		configMapVersion = currConfigmap.ResourceVersion
 	}
 
+	svcFound := false
+	svcName := smfDeploy.ObjectMeta.Name + "smf-nsmf"
+	currSvc := &apiv1.Service{}
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: svcName, Namespace: namespace}, currSvc); err == nil {
+		svcFound = true
+	}
+	
 	dmFound := false
 	dmName := smfDeploy.ObjectMeta.Name
 	currDeployment := &appsv1.Deployment{}
@@ -485,6 +522,19 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				return reconcile.Result{}, err
 			}
 			configMapVersion = cm.ResourceVersion
+		}
+	}
+	
+	if !svcFound {
+		svc := free5gcSMFCreateService(smfDeploy)
+		log.Info("Creating SMFDeployment service", "SMFDeployment.namespace", namespace, "Service.name", svc.ObjectMeta.Name)
+		// Set the controller reference, specifying that SMFDeployment controling underlying deployment
+		if err := ctrl.SetControllerReference(smfDeploy, svc, r.Scheme); err != nil {
+			log.Error(err, "Got error while setting Owner reference on SMF service.", "SMFDeployment.namespace", namespace)
+		}
+		if err := r.Client.Create(ctx, svc); err != nil {
+			log.Error(err, fmt.Sprintf("Error: failed to create an SMF service %s\n", err.Error()))
+			return reconcile.Result{}, err
 		}
 	}
 
