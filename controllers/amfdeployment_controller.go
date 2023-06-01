@@ -441,7 +441,7 @@ func calculateAMFStatus(deployment *appsv1.Deployment, amfDeploy *workloadv1alph
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="k8s.cni.cncf.io",resources=network-attachment-definitions,verbs=get;list;watch
 //+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
-
+//+kubebuilder:rbac:groups="",resources=services;services/finalizers;endpoints;events,verbs=create;update;get;list;watch;patch;delete
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
