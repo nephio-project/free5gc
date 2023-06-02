@@ -62,19 +62,9 @@ configuration:
               sd: 010203
             dnnUpfInfoList: {{- range $netInstance := .DNN_LIST }}
   {{- range $dnn := $netInstance.DataNetworks }}
-  - cidr: {{(index $dnn.Pool 0).Prefix}}
-    dnn: {{ $dnn.Name }}
-    natifname: {{index $netInstance.Interfaces 0}}
-  {{- end }}
-{{- end}}
-          - sNssai:
-              sst: 1
-              sd: 112233
-            dnnUpfInfoList: {{- range $netInstance := .DNN_LIST }}
-  {{- range $dnn := $netInstance.DataNetworks }}
-  - cidr: {{(index $dnn.Pool 0).Prefix}}
-    dnn: {{ $dnn.Name }}
-    natifname: {{index $netInstance.Interfaces 0}}
+              - dnn: {{ $dnn.Name }}
+                pools:
+                  - cidr: {{(index $dnn.Pool 0).Prefix}}
   {{- end }}
 {{- end}}
         interfaces:

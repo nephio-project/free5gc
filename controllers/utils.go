@@ -79,6 +79,5 @@ func getSMFNetworkInstances(smfspec workloadv1alpha1.SMFDeploymentSpec) ([]workl
 	if len(ret) == 0 {
 		return ret, false
 	}
-
 	return ret, true
 }

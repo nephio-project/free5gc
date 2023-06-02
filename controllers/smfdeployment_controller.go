@@ -275,7 +275,7 @@ func free5gcSMFCreateService(smfDeploy *workloadv1alpha1.SMFDeployment) *apiv1.S
 
 	service := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "smf-svc",
+			Name:      "smf-nsmf",
 			Namespace: namespace,
 		},
 		Spec: apiv1.ServiceSpec{
@@ -471,7 +471,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	svcFound := false
-	svcName := smfDeploy.ObjectMeta.Name + "smf-nsmf"
+	svcName := "smf-nsmf"
 	currSvc := &apiv1.Service{}
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: svcName, Namespace: namespace}, currSvc); err == nil {
 		svcFound = true
