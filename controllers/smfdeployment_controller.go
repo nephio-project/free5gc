@@ -31,10 +31,10 @@ import (
 	resource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-
-	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -50,7 +50,7 @@ type SMFDeploymentReconciler struct {
 }
 
 type SMFcfgStruct struct {
-	PFCP_IP string 
+	PFCP_IP  string
 	DNN_LIST []workloadv1alpha1.NetworkInstance
 }
 
@@ -68,7 +68,7 @@ func getSMFResourceParams(smfSpec workloadv1alpha1.SMFDeploymentSpec) (int32, *a
 	var cpuRequest string
 	var memoryLimit string
 	var memoryRequest string
-	
+
 	if smfSpec.Capacity.MaxSessions < 1000 && smfSpec.Capacity.MaxNFConnections < 10 {
 		cpuLimit = "100m"
 		cpuRequest = "100m"
@@ -163,8 +163,7 @@ func (r *SMFDeploymentReconciler) checkSMFNADexist(log logr.Logger, ctx context.
 	return true
 }
 
-// func free5gcSMFDeployment(log logr.Logger, smfDeploy *workloadv1alpha1.SMFDeployment) (*appsv1.Deployment, error) {
-func free5gcSMFDeployment(log logr.Logger, configMapVersion string, upfDeploy *workloadv1alpha1.UPFDeployment) (*appsv1.Deployment, error) {
+func free5gcSMFDeployment(log logr.Logger, configMapVersion string, smfDeploy *workloadv1alpha1.SMFDeployment) (*appsv1.Deployment, error) {
 	//TODO(jbelamaric): Update to use ImageConfig spec.ImagePaths["smf"],
 	smfImage := "towards5gs/free5gc-smf:v3.2.0"
 
@@ -199,7 +198,6 @@ func free5gcSMFDeployment(log logr.Logger, configMapVersion string, upfDeploy *w
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Annotations: instanceNad,
 					Annotations: podAnnotations,
 					Labels: map[string]string{
 						"name": instanceName,
@@ -277,7 +275,7 @@ func free5gcSMFCreateService(smfDeploy *workloadv1alpha1.SMFDeployment) *apiv1.S
 
 	service := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "smf-nsmf",
+			Name:      "smf-svc",
 			Namespace: namespace,
 		},
 		Spec: apiv1.ServiceSpec{
@@ -295,7 +293,6 @@ func free5gcSMFCreateService(smfDeploy *workloadv1alpha1.SMFDeployment) *apiv1.S
 	return service
 }
 
-
 func free5gcSMFCreateConfigmap(logger logr.Logger, smfDeploy *workloadv1alpha1.SMFDeployment) (*apiv1.ConfigMap, error) {
 	namespace := smfDeploy.ObjectMeta.Namespace
 	instanceName := smfDeploy.ObjectMeta.Name
@@ -309,6 +306,11 @@ func free5gcSMFCreateConfigmap(logger logr.Logger, smfDeploy *workloadv1alpha1.S
 	smfcfgStruct := SMFcfgStruct{}
 	smfcfgStruct.PFCP_IP = n4IP
 
+	networkInstances, aBool := getSMFNetworkInstances(smfDeploy.Spec)
+	if aBool != false {
+		smfcfgStruct.DNN_LIST = networkInstances
+	}
+
 	smfcfgTemplate := template.New("SMFCfg")
 	smfcfgTemplate, err = smfcfgTemplate.Parse(SMFCfgTemplate)
 	if err != nil {
@@ -316,12 +318,6 @@ func free5gcSMFCreateConfigmap(logger logr.Logger, smfDeploy *workloadv1alpha1.S
 		return nil, err
 	}
 
-	networkInstances, aBool := getSMFNetworkInstances(smfspec workloadv1alpha1.SMFDeploymentSpec)
-	if aBool != false {
-		smfcfgStruct.DNN_LIST = networkInstances
-	}
-	
-	
 	smfueroutingTemplate := template.New("SMFCfg")
 	smfueroutingTemplate, _ = smfueroutingTemplate.Parse(Uerouting)
 	if err != nil {
@@ -464,7 +460,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	namespace := smfDeploy.ObjectMeta.Namespace
-	
+
 	cmFound := false
 	configmapName := smfDeploy.ObjectMeta.Name + "-smf-configmap"
 	var configMapVersion string
@@ -480,7 +476,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: svcName, Namespace: namespace}, currSvc); err == nil {
 		svcFound = true
 	}
-	
+
 	dmFound := false
 	dmName := smfDeploy.ObjectMeta.Name
 	currDeployment := &appsv1.Deployment{}
@@ -496,7 +492,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				return reconcile.Result{}, err
 			}
 		}
-		
+
 		if currDeployment.Spec.Template.Annotations["workload.nephio.org/configMapVersion"] != configMapVersion {
 			log.Info("ConfigMap has been updated. Rolling deployment pods.", "SMFDeployment.namespace", namespace, "SMFDeployment.name", smfDeploy.Name)
 			currDeployment.Spec.Template.Annotations["workload.nephio.org/configMapVersion"] = configMapVersion
@@ -524,7 +520,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			configMapVersion = cm.ResourceVersion
 		}
 	}
-	
+
 	if !svcFound {
 		svc := free5gcSMFCreateService(smfDeploy)
 		log.Info("Creating SMFDeployment service", "SMFDeployment.namespace", namespace, "Service.name", svc.ObjectMeta.Name)
@@ -538,7 +534,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
-	if deployment, err := free5gcSMFDeployment(log, configMapVersion, upfDeploy); err != nil {
+	if deployment, err := free5gcSMFDeployment(log, configMapVersion, smfDeploy); err != nil {
 		log.Error(err, fmt.Sprintf("Error: failed to generate deployment %s\n", err.Error()))
 		return reconcile.Result{}, err
 	} else {

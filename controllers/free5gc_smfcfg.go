@@ -29,23 +29,23 @@ configuration:
         sst: 1
         sd: 010203
       dnnInfos:
-        - dnn: {{ $dnn.Name }}
+        - dnn: internet 
           dns:
-            ipv4: {{ .DNS_IP }}
+            ipv4: 8.8.8.8 
     - sNssai:
         sst: 1
         sd: 112233
       dnnInfos:
-        - dnn: {{ $dnn.Name }}
+        - dnn: internet
           dns:
-            ipv4: {{ .DNS_IP }}
+            ipv4: 8.8.8.8
     - sNssai:
         sst: 2
         sd: 112234
       dnnInfos:
-        - dnn: {{ $dnn.Name }}
+        - dnn: internet
           dns:
-            ipv4: {{ .DNS_IP }}
+            ipv4: 8.8.8.8
   plmnList:
     - mcc: "208"
       mnc: "93"
@@ -60,17 +60,23 @@ configuration:
           - sNssai:
               sst: 1
               sd: 010203
-            dnnUpfInfoList:
-              - dnn: {{ $dnn.Name }}
-                pools:
-                  - cidr: {{(index $dnn.Pool 0).Prefix}}
+            dnnUpfInfoList: {{- range $netInstance := .DNN_LIST }}
+  {{- range $dnn := $netInstance.DataNetworks }}
+  - cidr: {{(index $dnn.Pool 0).Prefix}}
+    dnn: {{ $dnn.Name }}
+    natifname: {{index $netInstance.Interfaces 0}}
+  {{- end }}
+{{- end}}
           - sNssai:
               sst: 1
               sd: 112233
-            dnnUpfInfoList:
-              - dnn: {{ $dnn.Name }}
-                pools:
-                  - cidr: {{(index $dnn.Pool 0).Prefix}}
+            dnnUpfInfoList: {{- range $netInstance := .DNN_LIST }}
+  {{- range $dnn := $netInstance.DataNetworks }}
+  - cidr: {{(index $dnn.Pool 0).Prefix}}
+    dnn: {{ $dnn.Name }}
+    natifname: {{index $netInstance.Interfaces 0}}
+  {{- end }}
+{{- end}}
         interfaces:
           - interfaceType: N3
             endpoints:
