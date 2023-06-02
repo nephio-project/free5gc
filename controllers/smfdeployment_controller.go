@@ -307,7 +307,7 @@ func free5gcSMFCreateConfigmap(logger logr.Logger, smfDeploy *workloadv1alpha1.S
 	smfcfgStruct.PFCP_IP = n4IP
 
 	networkInstances, aBool := getSMFNetworkInstances(smfDeploy.Spec)
-	if aBool != false {
+	if aBool {
 		smfcfgStruct.DNN_LIST = networkInstances
 	}
 
