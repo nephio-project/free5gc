@@ -20,4 +20,8 @@ spec:
     - name: vpc-internal
       interfaces:
         - n4
+      dataNetworks:
+        - name: internet
+          pool:
+            - prefix: "10.200.50.0/24" 
   configRefs:
