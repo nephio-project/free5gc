@@ -29,9 +29,9 @@ configuration:
         sst: 1
         sd: 010203
       dnnInfos:
-        - dnn: internet
+        - dnn: internet 
           dns:
-            ipv4: 8.8.8.8
+            ipv4: 8.8.8.8 
     - sNssai:
         sst: 1
         sd: 112233
@@ -60,17 +60,13 @@ configuration:
           - sNssai:
               sst: 1
               sd: 010203
-            dnnUpfInfoList:
-              - dnn: internet
+            dnnUpfInfoList: {{- range $netInstance := .DNN_LIST }}
+  {{- range $dnn := $netInstance.DataNetworks }}
+              - dnn: {{ $dnn.Name }}
                 pools:
-                  - cidr: 10.1.0.0/17
-          - sNssai:
-              sst: 1
-              sd: 112233
-            dnnUpfInfoList:
-              - dnn: internet
-                pools:
-                  - cidr: 10.1.128.0/17
+                  - cidr: {{(index $dnn.Pool 0).Prefix}}
+  {{- end }}
+{{- end}}
         interfaces:
           - interfaceType: N3
             endpoints:

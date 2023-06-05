@@ -391,33 +391,10 @@ func TestCaclculateSMFStatusReplicaFailure(t *testing.T) {
 	}
 }
 
-// Missing:
-//
-//   - Add UERouting
-//
-//   - Remove wrapper
-//
-//   - N4 only
-//
-//   - Completely different ConfigMap
-//
-//   - Add sbi:
-//     scheme: http
-//     registerIPv4: smf-nsmf # IP used to register to NRF
-//     bindingIPv4: 0.0.0.0  # IP used to bind the service
-//     port: 80
-//     tls:
-//     key: config/TLS/smf.key
-//     pem: config/TLS/smf.pem
-//
-//     nrfUri: http://nrf-nnrf:8000
-//
-// - Generate Service object per link below
-// https://github.com/s3wong/free5gc/blob/main/doc/sample-manifests/smf.yaml#L172
 func TestFree5gcSMFDeployment(t *testing.T) {
 	log := log.FromContext(context.TODO())
 	smfDeploymentInstance := newSmfDeployInstance("test-smf-deployment")
-	got, err := free5gcSMFDeployment(log, smfDeploymentInstance)
+	got, err := free5gcSMFDeployment(log, "111111", smfDeploymentInstance)
 	if err != nil {
 		t.Errorf("free5gcSMFDeployment() returned unexpected error %v", err)
 	}
@@ -439,6 +416,7 @@ func TestFree5gcSMFDeployment(t *testing.T) {
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
+						"workload.nephio.org/configMapVersion": "111111",
 						"k8s.v1.cni.cncf.io/networks": `[
         {"name": "test-smf-deployment-n4",
          "interface": "n4",
