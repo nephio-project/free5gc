@@ -68,26 +68,7 @@ func newAmfDeployInstance(name string) *workloadv1alpha1.AMFDeployment {
 					MaxNFConnections:      2000,
 				},
 				Interfaces: interfaces,
-				//				NetworkInstances: []workloadv1alpha1.NetworkInstance{
-				//					{
-				//						Name: "vpc-internet",
-				//						Interfaces: []string{
-				//							"n2",
-				//						},
-				//						DataNetworks: []workloadv1alpha1.DataNetwork{
-				//							{
-				//								Name: &dnnName,
-				//								Pool: []workloadv1alpha1.Pool{
-				//									{
-				//										Prefix: "100.100.0.0/16",
-				//									},
-				//								},
-				//							},
-				//						},
-				//						BGP:   nil,
-				//						Peers: []workloadv1alpha1.PeerConfig{},
-				//					},
-				//				},
+				
 			},
 		},
 	}
@@ -169,15 +150,7 @@ func TestFree5gcAMFCreateConfigmap(t *testing.T) {
 	if err != nil {
 		t.Error("Could not parse AMFCfgTemplate template.")
 	}
-	// amfwrapperTemplate, _ = amfwrapperTemplate.Parse(AMFWrapperScript)
-	// if err != nil {
-	// 	t.Error("Could not parse UPFWrapperScript template.")
-	// }
-
-	// var wrapper bytes.Buffer
-	// if err := upfwrapperTemplate.Execute(&wrapper, upfcfgStruct); err != nil {
-	// 	t.Error("Could not render UPFWrapperScript template.")
-	// }
+	
 
 	var amfcfg bytes.Buffer
 	if err := amfcfgTemplate.Execute(&amfcfg, amfcfgStruct); err != nil {
@@ -217,7 +190,7 @@ func TestCaclculateAMFStatusFirstReconcile(t *testing.T) {
 	condition.Status = metav1.ConditionFalse
 	condition.Reason = "MinimumReplicasNotAvailable"
 	condition.Message = "UPFDeployment pod(s) is(are) starting."
-	// condition.LastTransitionTime = metav1.Now()
+	
 	want.Conditions = append(want.Conditions, condition)
 
 	got, b := calculateStatus(deployment, upfDeploymentInstance)
@@ -415,7 +388,7 @@ func TestCaclculateAMFStatusReplicaFailure(t *testing.T) {
 func TestFree5gcAMFDeployment(t *testing.T) {
 	log := log.FromContext(context.TODO())
 	amfDeploymentInstance := newAmfDeployInstance("test-amf-deployment")
-	got, err := free5gcAMFDeployment(log, amfDeploymentInstance)
+	got, err := free5gcAMFDeployment(log, "111111", amfDeploymentInstance)
 	if err != nil {
 		t.Errorf("free5gcAMFDeployment() returned unexpected error %v", err)
 	}
@@ -437,6 +410,7 @@ func TestFree5gcAMFDeployment(t *testing.T) {
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
+						"workload.nephio.org/configMapVersion": "111111",
 						"k8s.v1.cni.cncf.io/networks": `[
         {"name": "test-amf-deployment-n2",
          "interface": "n2",
@@ -508,11 +482,7 @@ func TestFree5gcAMFDeployment(t *testing.T) {
 														Key:  "amfcfg.yaml",
 														Path: "amfcfg.yaml",
 													},
-													// {
-													// 	Key:  "wrapper.sh",
-													// 	Path: "wrapper.sh",
-													// 	Mode: &wrapperMode,
-													// },
+													
 												},
 											},
 										},
@@ -520,10 +490,10 @@ func TestFree5gcAMFDeployment(t *testing.T) {
 								},
 							},
 						},
-					}, // Volumes
-				}, // PodSpec
-			}, // PodTemplateSpec
-		}, // PodTemplateSpec
+					}, 
+				}, 
+			}, 
+		}, 
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("free5gcAMFDeployment(%v) returned %v, want %v", amfDeploymentInstance, got, want)
