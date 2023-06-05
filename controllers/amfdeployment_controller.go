@@ -52,34 +52,6 @@ type AMFDeploymentReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=workload.nephio.org,resources=amfdeployments,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=workload.nephio.org,resources=amfdeployments/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=workload.nephio.org,resources=amfdeployments/finalizers,verbs=update
-
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the AMFDeployment object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
-//func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-//	_ = log.FromContext(ctx)
-//
-// TODO(user): your logic here
-
-//	return ctrl.Result{}, nil
-//}
-
-// SetupWithManager sets up the controller with the Manager.
-//func (r *AMFDeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
-//	return ctrl.NewControllerManagedBy(mgr).
-//		For(&workloadv1alpha1.AMFDeployment{}).
-//		Complete(r)
-//}
-
 type AMFcfgStruct struct {
 	N2_IP string
 	// N11_IP string
@@ -97,11 +69,11 @@ type AMFAnnotation struct {
 func getAMFResourceParams(amfSpec workloadv1alpha1.AMFDeploymentSpec) (int32, *apiv1.ResourceRequirements, error) {
 	// Placeholder for Capacity calculation. Reqiurce requirements houlw be calculated based on DL, UL.
 
-	// TODO: increase number of recpicas based on NFDeployment.Capacity.MaxSessions
-	var replicas int32 = 1
+        // TODO: increase number of recpicas based on NFDeployment.Capacity.MaxSessions
 
-	//	downlink := resource.MustParse("5G")
-	//	uplink := resource.MustParse("1G")
+	var replicas int32 = 1
+	//downlink := resource.MustParse("5G")
+        //uplink := resource.MustParse("1G")
 	var cpuLimit string
 	var cpuRequest string
 	var memoryLimit string
@@ -131,22 +103,18 @@ func getAMFResourceParams(amfSpec workloadv1alpha1.AMFDeploymentSpec) (int32, *a
 func constructAMFNadName(templateName string, suffix string) string {
 	return templateName + "-" + suffix
 }
-
 // getNads retursn NAD label string composed based on the Nx interfaces configuration provided in AMFDeploymentSpec
+
 func getAMFNad(templateName string, spec *workloadv1alpha1.AMFDeploymentSpec) string {
 	var ret string
 
 	n2CfgSlice := getIntConfigSlice(spec.Interfaces, "n2")
-	//	n11CfgSlice := getIntConfigSlice(spec.Interfaces, "N11")
-	//	n4CfgSlice := getIntConfigSlice(spec.Interfaces, "N4")
-	//	n9CfgSlice := getIntConfigSlice(spec.Interfaces, "N9")
+	
 
 	ret = `[`
 	intfMap := map[string][]workloadv1alpha1.InterfaceConfig{
 		"n2": n2CfgSlice,
-		//		"n11": n11CfgSlice,
-		//		"n6": n6CfgSlice,
-		//		"n9": n9CfgSlice,
+		
 	}
 	// Need to sort inftMap by key otherwise unitTests might fail as order of intefaces in intfMap is not guaranteed
 	inftMapKeys := make([]string, 0, len(intfMap))
@@ -176,7 +144,6 @@ func getAMFNad(templateName string, spec *workloadv1alpha1.AMFDeploymentSpec) st
     ]`
 	return ret
 }
-
 // checkNADExists gets deployment object and checks "k8s.v1.cni.cncf.io/networks" NADs.
 // returns True if all requred NADs are present
 // returns False if any NAD doesn't exists in deployment namespace
@@ -208,21 +175,22 @@ func (r *AMFDeploymentReconciler) checkAMFNADexist(log logr.Logger, ctx context.
 	return true
 }
 
-func free5gcAMFDeployment(log logr.Logger, amfDeploy *workloadv1alpha1.AMFDeployment) (*appsv1.Deployment, error) {
-	//TODO(jbelamaric): Update to use ImageConfig spec.ImagePaths["amf"],
+func free5gcAMFDeployment(log logr.Logger, configMapVersion string, amfDeploy *workloadv1alpha1.AMFDeployment) (*appsv1.Deployment, error) {
+	 //TODO(jbelamaric): Update to use ImageConfig spec.ImagePaths["amf"],
 	amfImage := "towards5gs/free5gc-amf:v3.2.0"
 
 	instanceName := amfDeploy.ObjectMeta.Name
 	namespace := amfDeploy.ObjectMeta.Namespace
 	amfspec := amfDeploy.Spec
-	//var wrapperMode int32 = 511 // 777 octal
+	
 	replicas, resourceReq, err := getAMFResourceParams(amfspec)
 	if err != nil {
 		return nil, err
 	}
 	instanceNadLabel := getAMFNad(amfDeploy.ObjectMeta.Name, &amfspec)
-	instanceNad := make(map[string]string)
-	instanceNad["k8s.v1.cni.cncf.io/networks"] = instanceNadLabel
+	podAnnotations := make(map[string]string)
+	podAnnotations["workload.nephio.org/configMapVersion"] = configMapVersion
+	podAnnotations["k8s.v1.cni.cncf.io/networks"] = instanceNadLabel
 	securityContext := &apiv1.SecurityContext{
 		Capabilities: &apiv1.Capabilities{
 			Add:  []apiv1.Capability{"NET_ADMIN"},
@@ -243,7 +211,8 @@ func free5gcAMFDeployment(log logr.Logger, amfDeploy *workloadv1alpha1.AMFDeploy
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Annotations: instanceNad,
+					//Annotations: instanceNad,
+					Annotations: podAnnotations,
 					Labels: map[string]string{
 						"name": instanceName,
 					},
@@ -293,11 +262,11 @@ func free5gcAMFDeployment(log logr.Logger, amfDeploy *workloadv1alpha1.AMFDeploy
 														Key:  "amfcfg.yaml",
 														Path: "amfcfg.yaml",
 													},
-													//	{
-													//		Key:  "wrapper.sh",
-													//		Path: "wrapper.sh",
-													//		Mode: &wrapperMode,
-													//	},
+													//      {
+                                                                                                        //              Key:  "wrapper.sh",
+                                                                                                        //              Path: "wrapper.sh",
+                                                                                                        //              Mode: &wrapperMode,
+                                                                                                        //      },
 												},
 											},
 										},
@@ -350,29 +319,11 @@ func free5gcAMFCreateConfigmap(logger logr.Logger, amfDeploy *workloadv1alpha1.A
 		log.Log.Info("Interface N2 not found in NFDeployment Spec")
 		return nil, err
 	}
-	//	n11IP, err := getIPv4(amfDeploy.Spec.Interfaces, "N11")
-	//	if err != nil {
-	//		log.Log.Info("Interface N3 not found in NFDeployment Spec")
-	//		return nil, err
-	//	}
-
-	//	n6IP, err := getIntConfig(amfDeploy.Spec.Interfaces, "N6")
-	//	if err != nil {
-	//		log.Log.Info("Interface N2 not found in NFDeployment Spec")
-	//		return nil, err
-	//	}
+	
 
 	amfcfgStruct := AMFcfgStruct{}
 	amfcfgStruct.N2_IP = n2IP
-	//	AMFcfgStruct.N11_IP = n11IP
-	//	AMFcfgStruct.N6gw = string(*n6IP.IPv4.Gateway)
-
-	//	n6Instances, ok := getNetworkInsance(AMFDeploy.Spec, "N6")
-	//	if !ok {
-	//		log.Log.Info("No N6 interface in NFDeployment Spec.")
-	//		return nil, errors.New("No N6 intefaces in NFDeployment Spec.")
-	//	}
-	//	AMFcfgStruct.N6cfg = n6Instances
+	
 
 	amfcfgTemplate := template.New("AMFCfg")
 	amfcfgTemplate, err = amfcfgTemplate.Parse(AMFCfgTemplate)
@@ -380,18 +331,7 @@ func free5gcAMFCreateConfigmap(logger logr.Logger, amfDeploy *workloadv1alpha1.A
 		log.Log.Info("Could not parse AMFCfgTemplate template.")
 		return nil, err
 	}
-	//	amfwrapperTemplate := template.New("AMFCfg")
-	//	amfwrapperTemplate, _ = amfwrapperTemplate.Parse(AMFWrapperScript)
-	//	if err != nil {
-	//		log.Log.Info("Could not parse AMFWrapperScript template.")
-	//		return nil, err
-	//	}
-
-	//	var wrapper bytes.Buffer
-	//	if err := amfwrapperTemplate.Execute(&wrapper, amfcfgStruct); err != nil {
-	//		log.Log.Info("Could not render AMFWrapperScript template.")
-	//		return nil, err
-	//	}
+	
 
 	var amfcfg bytes.Buffer
 	if err := amfcfgTemplate.Execute(&amfcfg, amfcfgStruct); err != nil {
@@ -410,7 +350,7 @@ func free5gcAMFCreateConfigmap(logger logr.Logger, amfDeploy *workloadv1alpha1.A
 		},
 		Data: map[string]string{
 			"amfcfg.yaml": amfcfg.String(),
-			//	"wrapper.sh":  wrapper.String(),
+			//      "wrapper.sh":  wrapper.String(),
 		},
 	}
 	return configMap, nil
@@ -462,7 +402,7 @@ func calculateAMFStatus(deployment *appsv1.Deployment, amfDeploy *workloadv1alph
 		return amfstatus, false
 	}
 
-	// if both status types are Available, don't update.
+	 // if both status types are Available, don't update.
 	if string(lastDeploymentStatus.Type) == string(lastAMFDeploymentStatus.Type) {
 		return amfstatus, false
 	}
@@ -492,7 +432,6 @@ func calculateAMFStatus(deployment *appsv1.Deployment, amfDeploy *workloadv1alph
 
 	return amfstatus, true
 }
-
 //+kubebuilder:rbac:groups=workload.nephio.org,resources=AMFdeployments,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=workload.nephio.org,resources=AMFdeployments/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=workload.nephio.org,resources=AMFdeployments/finalizers,verbs=update
@@ -502,7 +441,7 @@ func calculateAMFStatus(deployment *appsv1.Deployment, amfDeploy *workloadv1alph
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="k8s.cni.cncf.io",resources=network-attachment-definitions,verbs=get;list;watch
 //+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
-
+//+kubebuilder:rbac:groups="",resources=services;services/finalizers;endpoints;events,verbs=create;update;get;list;watch;patch;delete
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
@@ -512,6 +451,7 @@ func calculateAMFStatus(deployment *appsv1.Deployment, amfDeploy *workloadv1alph
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
+
 func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("AMFDeployment", req.NamespacedName)
 
@@ -530,9 +470,11 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// see if we are dealing with create or update
 	cmFound := false
 	configmapName := amfDeploy.ObjectMeta.Name + "-amf-configmap"
+	var configMapVersion string
 	currConfigmap := &apiv1.ConfigMap{}
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: configmapName, Namespace: namespace}, currConfigmap); err == nil {
 		cmFound = true
+		configMapVersion = currConfigmap.ResourceVersion
 	}
 
 	svcFound := false
@@ -551,14 +493,23 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	if dmFound {
 		d := currDeployment.DeepCopy()
-
+		
 		// Updating AMFDeployment status. On the first sets the first Condition to Reconciling.
-		// On the subsequent runs it gets undelying depoyment Conditions and use the last one to decide if status has to be updated.
+                // On the subsequent runs it gets undelying depoyment Conditions and use the last one to decide if status has to be updated.
 		if d.DeletionTimestamp == nil {
 			if err := r.syncAMFStatus(ctx, d, amfDeploy); err != nil {
 				log.Error(err, "Failed to update AMFDeployment status", "AMFDeployment.namespace", namespace, "AMFDeployment.name", amfDeploy.Name)
 				return reconcile.Result{}, err
 			}
+		}
+		if currDeployment.Spec.Template.Annotations["workload.nephio.org/configMapVersion"] != configMapVersion {
+			log.Info("ConfigMap has been updated. Rolling deployment pods.", "AMFDeployment.namespace", namespace, "AMFDeployment.name", amfDeploy.Name)
+			currDeployment.Spec.Template.Annotations["workload.nephio.org/configMapVersion"] = configMapVersion
+			if err := r.Update(ctx, currDeployment); err != nil {
+				log.Error(err, "Failed to update Deployment", "AMFDeployment.namespace", currDeployment.Namespace, "AMFDeployment.name", currDeployment.Name)
+				return reconcile.Result{}, err
+			}
+			return reconcile.Result{Requeue: true}, nil
 		}
 	}
 
@@ -568,7 +519,7 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return reconcile.Result{}, err
 	} else {
 		if !cmFound {
-			log.Info("Creating AMFDeployment configmap", "AMFDeployment.namespace", namespace, "Confirmap.name", cm.ObjectMeta.Name)
+			log.Info("Creating AMFDeployment configmap", "AMFDeployment.namespace", namespace, "ConfirMap.name", cm.ObjectMeta.Name)
 			// Set the controller reference, specifying that AMFDeployment controling underlying deployment
 			if err := ctrl.SetControllerReference(amfDeploy, cm, r.Scheme); err != nil {
 				log.Error(err, "Got error while setting Owner reference on configmap.", "AMFDeployment.namespace", namespace)
@@ -577,6 +528,7 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				log.Error(err, fmt.Sprintf("Error: failed to create configmap %s\n", err.Error()))
 				return reconcile.Result{}, err
 			}
+			configMapVersion = cm.ResourceVersion
 		}
 	}
 
@@ -593,7 +545,7 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
-	if deployment, err := free5gcAMFDeployment(log, amfDeploy); err != nil {
+	if deployment, err := free5gcAMFDeployment(log, configMapVersion, amfDeploy); err != nil {
 		log.Error(err, fmt.Sprintf("Error: failed to generate deployment %s\n", err.Error()))
 		return reconcile.Result{}, err
 	} else {
