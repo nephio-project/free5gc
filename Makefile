@@ -1,4 +1,4 @@
-GO_VERSION ?= 1.20.4
+GO_VERSION ?= 1.20.5
 GOLANG_CI_VER ?= v1.52
 GOSEC_VER ?= 2.15.0
 TEST_COVERAGE_FILE=lcov.info
@@ -24,13 +24,12 @@ endif
 REGISTRY ?= docker.io/nephio
 PROJECT ?= free5gc-operator
 TAG ?= latest
-CONTROLLER_NAME ?= $(PROJECT)-controller
 
 # Image URL to use all building/pushing image targets
 ifeq (,$(REGISTRY))
-IMG ?= $(CONTROLLER_NAME):$(TAG)
+IMG ?= $(PROJECT):$(TAG)
 else
-IMG ?= $(REGISTRY)/$(CONTROLLER_NAME):$(TAG)
+IMG ?= $(REGISTRY)/$(PROJECT):$(TAG)
 endif
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
@@ -93,7 +92,7 @@ test: manifests generate fmt vet envtest ## Run tests.
 .PHONY: unit
 unit: ## Run unit tests against code.
 ifeq ($(CONTAINER_RUNNABLE), 0)
-		$(CONTAINER_RUNTIME) run -it -v ${PWD}:/go/src -w /go/src docker.io/library/golang:${GO_VERSION}-alpine3.17 \
+	$(CONTAINER_RUNTIME) run -it -v ${PWD}:/go/src -w /go/src docker.io/library/golang:${GO_VERSION}-alpine3.17 \
 	/bin/sh -c "go test ./... -v -coverprofile ${TEST_COVERAGE_FILE}; \
 	go tool cover -html=${TEST_COVERAGE_FILE} -o ${TEST_COVERAGE_HTML_FILE}; \
 	go tool cover -func=${TEST_COVERAGE_FILE} -o ${TEST_COVERAGE_FUNC_FILE}"
@@ -107,7 +106,7 @@ endif
 .PHONY: lint
 lint: ## Run lint  against code.
 ifeq ($(CONTAINER_RUNNABLE), 0)
-		$(CONTAINER_RUNTIME) run -it -v ${PWD}:/go/src -w /go/src docker.io/golangci/golangci-lint:${GOLANG_CI_VER}-alpine golangci-lint run ./... -v --timeout 10m
+	$(CONTAINER_RUNTIME) run -it -v ${PWD}:/go/src -w /go/src docker.io/golangci/golangci-lint:${GOLANG_CI_VER}-alpine golangci-lint run ./... -v --timeout 10m
 else
 	golangci-lint run ./... -v --timeout 10m
 endif
@@ -116,7 +115,7 @@ endif
 .PHONY: gosec
 gosec: ## inspects source code for security problem by scanning the Go Abstract Syntax Tree
 ifeq ($(CONTAINER_RUNNABLE), 0)
-		$(CONTAINER_RUNTIME) run -it -v ${PWD}:/go/src -w /go/src docker.io/securego/gosec:${GOSEC_VER} ./...
+	$(CONTAINER_RUNTIME) run -it -v ${PWD}:/go/src -w /go/src docker.io/securego/gosec:${GOSEC_VER} ./...
 else
 	gosec ./...
 endif
@@ -139,23 +138,25 @@ docker-build: test ## Build docker image with the manager.
 docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
 
-KPTGEN_CFG_DIR = package/fn-config
-KPT_PKG_DIR = package/$(CONTROLLER_NAME)
-
-.PHONY: package
-package: controller-gen kpt kptgen $(KPTGEN_CFG_DIR)
-	rm -rf ${KPT_PKG_DIR}/
-	mkdir ${KPT_PKG_DIR}
-	$(KPT) pkg init ${KPT_PKG_DIR} --description "${PROJECT} controller"
-	$(CONTROLLER_GEN) crd paths="./..." output:crd:dir=${KPT_PKG_DIR}/crds
-	$(KPTGEN) apply config ${KPT_PKG_DIR} --fn-config-dir ${KPTGEN_CFG_DIR}
-	$(KPT) fn eval --image gcr.io/kpt-fn/set-image:v0.1.1 ${KPT_PKG_DIR} -- name=controller newName=${REGISTRY}/${CONTROLLER_NAME} newTag=${TAG}
-	$(KPT) fn eval --image gcr.io/kpt-fn/set-namespace:v0.1.1 ${KPT_PKG_DIR} -- namespace=free5gc
+# Broken
+#
+# KPTGEN_CFG_DIR = package/fn-config
+# KPT_PKG_DIR = package/$(PROJECT)
+#
+# .PHONY: package
+# package: controller-gen kpt kptgen $(KPTGEN_CFG_DIR)
+# 	rm -rf ${KPT_PKG_DIR}/
+# 	mkdir ${KPT_PKG_DIR}
+# 	$(KPT) pkg init ${KPT_PKG_DIR} --description "${PROJECT} controller"
+# 	$(CONTROLLER_GEN) crd paths="./..." output:crd:dir=${KPT_PKG_DIR}/crds
+# 	$(KPTGEN) apply config ${KPT_PKG_DIR} --fn-config-dir ${KPTGEN_CFG_DIR}
+# 	$(KPT) fn eval --image gcr.io/kpt-fn/set-image:v0.1.1 ${KPT_PKG_DIR} -- name=controller newName=${REGISTRY}/${PROJECT} newTag=${TAG}
+# 	$(KPT) fn eval --image gcr.io/kpt-fn/set-namespace:v0.1.1 ${KPT_PKG_DIR} -- namespace=free5gc
 
 ##@ Deployment
 
 ifndef ignore-not-found
-  ignore-not-found = false
+	ignore-not-found = false
 endif
 
 .PHONY: install
@@ -186,14 +187,14 @@ $(LOCALBIN):
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
-KPT ?= $(LOCALBIN)/kpt
-KPTGEN ?= $(LOCALBIN)/kptgen
+#KPT ?= $(LOCALBIN)/kpt
+#KPTGEN ?= $(LOCALBIN)/kptgen
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.0.1
 CONTROLLER_TOOLS_VERSION ?= v0.11.4
-KPT_VERSION ?= main
-KPTGEN_VERSION ?= v0.0.9
+#KPT_VERSION ?= main
+#KPTGEN_VERSION ?= v0.0.9
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
@@ -211,12 +212,12 @@ envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
-.PHONY: kpt
-kpt: $(KPT) ## Download kpt locally if necessary.
-$(KPT): $(LOCALBIN)
-	test -s $(LOCALBIN)/kpt || GOBIN=$(LOCALBIN) go install -v github.com/GoogleContainerTools/kpt@$(KPT_VERSION)
+# .PHONY: kpt
+# kpt: $(KPT) ## Download kpt locally if necessary.
+# $(KPT): $(LOCALBIN)
+# 	test -s $(LOCALBIN)/kpt || GOBIN=$(LOCALBIN) go install -v github.com/GoogleContainerTools/kpt@$(KPT_VERSION)
 
-.PHONY: kptgen
-kptgen: $(KPTGEN)
-$(KPTGEN): $(LOCALBIN)
-	test -s $(LOCALBIN)/kptgen || GOBIN=$(LOCALBIN) go install -v github.com/henderiw-kpt/kptgen@$(KPTGEN_VERSION)
+# .PHONY: kptgen
+# kptgen: $(KPTGEN)
+# $(KPTGEN): $(LOCALBIN)
+# 	test -s $(LOCALBIN)/kptgen || GOBIN=$(LOCALBIN) go install -v github.com/henderiw-kpt/kptgen@$(KPTGEN_VERSION)
