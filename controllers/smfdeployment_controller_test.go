@@ -19,7 +19,6 @@ package controllers
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"html/template"
 	"reflect"
 	"testing"
@@ -89,10 +88,6 @@ func TestGetSMFResourceParams(t *testing.T) {
 		t.Errorf("getSMFResourceParams returned number of replicas = %d, want %d", replicas, 1)
 	}
 
-	// cpuLimit = "100m"
-	// cpuRequest = "100m"
-	// memoryRequest = "128Mi"
-
 	want := &apiv1.ResourceRequirements{
 		Limits: apiv1.ResourceList{
 			"cpu":    resource.MustParse("500m"),
@@ -121,10 +116,6 @@ func TestGetSMFNad(t *testing.T) {
     ]`
 	if got != want {
 		t.Errorf("getSMFNad(%v) returned %v, want %v", smfDeploymentInstance, got, want)
-		fmt.Println("Got:")
-		fmt.Println(got)
-		fmt.Println("Want")
-		fmt.Println(want)
 	}
 }
 
@@ -502,13 +493,6 @@ func TestFree5gcSMFDeployment(t *testing.T) {
 			}, // PodTemplateSpec
 		}, // PodTemplateSpec
 	}
-
-	fmt.Println("Got:")
-	fmt.Println(got)
-	fmt.Println()
-	fmt.Println("Want:")
-	fmt.Println(want)
-	fmt.Println()
 
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("free5gcSMFDeployment(%v) returned %v, want %v", smfDeploymentInstance, got, want)

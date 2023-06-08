@@ -107,10 +107,10 @@ func constructNadName(templateName string, suffix string) string {
 func getNad(templateName string, spec *workloadv1alpha1.UPFDeploymentSpec) string {
 	var ret string
 
-	n6CfgSlice := getIntConfigSlice(spec.Interfaces, "N6")
-	n3CfgSlice := getIntConfigSlice(spec.Interfaces, "N3")
-	n4CfgSlice := getIntConfigSlice(spec.Interfaces, "N4")
-	n9CfgSlice := getIntConfigSlice(spec.Interfaces, "N9")
+	n6CfgSlice := getIntConfigSlice(spec.Interfaces, "n6")
+	n3CfgSlice := getIntConfigSlice(spec.Interfaces, "n3")
+	n4CfgSlice := getIntConfigSlice(spec.Interfaces, "n4")
+	n9CfgSlice := getIntConfigSlice(spec.Interfaces, "n9")
 
 	ret = `[`
 	intfMap := map[string][]workloadv1alpha1.InterfaceConfig{
@@ -287,18 +287,18 @@ func free5gcUPFDeployment(log logr.Logger, configMapVersion string, upfDeploy *w
 func free5gcUPFCreateConfigmap(logger logr.Logger, upfDeploy *workloadv1alpha1.UPFDeployment) (*apiv1.ConfigMap, error) {
 	namespace := upfDeploy.ObjectMeta.Namespace
 	instanceName := upfDeploy.ObjectMeta.Name
-	n4IP, err := getIPv4(upfDeploy.Spec.Interfaces, "N4")
+	n4IP, err := getIPv4(upfDeploy.Spec.Interfaces, "n4")
 	if err != nil {
 		log.Log.Info("Interface N4 not found in NFDeployment Spec")
 		return nil, err
 	}
-	n3IP, err := getIPv4(upfDeploy.Spec.Interfaces, "N3")
+	n3IP, err := getIPv4(upfDeploy.Spec.Interfaces, "n3")
 	if err != nil {
 		log.Log.Info("Interface N3 not found in NFDeployment Spec")
 		return nil, err
 	}
 
-	n6IP, err := getIntConfig(upfDeploy.Spec.Interfaces, "N6")
+	n6IP, err := getIntConfig(upfDeploy.Spec.Interfaces, "n6")
 	if err != nil {
 		log.Log.Info("Interface N6 not found in NFDeployment Spec")
 		return nil, err
@@ -309,7 +309,7 @@ func free5gcUPFCreateConfigmap(logger logr.Logger, upfDeploy *workloadv1alpha1.U
 	upfcfgStruct.GTPU_IP = n3IP
 	upfcfgStruct.N6gw = string(*n6IP.IPv4.Gateway)
 
-	n6Instances, ok := getNetworkInsance(upfDeploy.Spec, "N6")
+	n6Instances, ok := getNetworkInsance(upfDeploy.Spec, "n6")
 	if !ok {
 		log.Log.Info("No N6 interface in NFDeployment Spec.")
 		return nil, errors.New("No N6 intefaces in NFDeployment Spec.")

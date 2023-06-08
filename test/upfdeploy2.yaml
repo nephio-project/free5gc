@@ -10,17 +10,17 @@ spec:
     maxUplinkThroughput: 10G
     maxDownlinkThroughput: 10G
   interfaces:
-    - name: N3
+    - name: n3
       ipv4:
         address: 13.1.0.2/24
         gateway: 13.1.0.1
       vlanID: 13
-    - name: N4
+    - name: n4
       ipv4:
         address: 14.1.0.2/24
         gateway: 14.1.0.1
       vlanID: 14
-    - name: N6
+    - name: n6
       ipv4:
         address: 16.1.0.2/24
         gateway: 16.1.0.1
@@ -28,13 +28,13 @@ spec:
   networkInstances:
     - name: vpc-ran
       interfaces:
-        - N3
+        - n3
     - name: vpc-internal
       interfaces:
-        - N4
+        - n4
     - name: vpc-internet
       interfaces:
-        - N6
+        - n6
       dataNetworks:
         - name: internet
           pool:
