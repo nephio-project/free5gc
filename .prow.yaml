@@ -4,7 +4,7 @@ presubmits:
     run_if_changed: "^.*.go$"
     spec:
       containers:
-      - image: nephio/gotests:4
+      - image: nephio/gotests:7
         command:
         - "/bin/sh"
         args:
@@ -17,7 +17,7 @@ presubmits:
     run_if_changed: "^.*.go$"
     spec:
       containers:
-      - image: nephio/gotests:4
+      - image: nephio/gotests:7
         command:
         - "/bin/sh"
         args:
@@ -30,7 +30,7 @@ presubmits:
     run_if_changed: "^.*.go$"
     spec:
       containers:
-      - image: nephio/gotests:4
+      - image: nephio/gotests:7
         command:
         - "/bin/sh"
         args:
@@ -43,10 +43,24 @@ presubmits:
     run_if_changed: "^.*.go$"
     spec:
       containers:
-      - image: nephio/gotests:4
+      - image: nephio/gotests:7
         command:
         - "/bin/sh"
         args:
         - "-c"
         - |
           "/usr/local/bin/checklicense.sh"
+  - name: presubmit-f5gc-operator-lichen
+    decorate: true
+    always_run: true
+    spec:
+      containers:
+      - image: nephio/gotests:7
+        command:
+        - "/bin/bash"
+        args:
+        - "-c"
+        - |
+          for i in \
+          $(egrep -rl --null --include \*.go 'package\s+main\b' | xargs -0 -L 1  dirname  | sort -u | xargs -d '\n' -L 1 printf "%s " ) ; \
+          do cd $i; echo $i; rm -f /tmp/cmd; go build -o "/tmp/cmd"; lichen -c /etc/lichen.yaml "/tmp/cmd" || exit 1; cd - ;done
