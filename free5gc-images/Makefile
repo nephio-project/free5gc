@@ -1,7 +1,7 @@
 FREE5GC_VERSION ?= 3.2.1
 IMG_REGISTRY ?= docker.io/nephio
 BASE_IMAGE ?= alpine:3.18.0
-BUILDER_IMAGE ?= golang:1.20.4
+BUILDER_IMAGE ?= golang:1.20.5
 
 ifeq ($(NO_CACHE),true)
 	BUILD_ARGS=--no-cache
@@ -9,23 +9,23 @@ endif
 
 define build
 	docker build \
-		--tag $(IMG_REGISTRY)/$1:$(FREE5GC_VERSION) \
-		--tag $(IMG_REGISTRY)/$1:latest \
-		--build-arg VERSION=$(FREE5GC_VERSION) \
-		--build-arg REGISTRY=$(IMG_REGISTRY) \
-		--build-arg BASE_IMAGE=$(BASE_IMAGE) \
-		--build-arg BUILDER_IMAGE=$(BUILDER_IMAGE) \
-		--file ./$1/Dockerfile . \
+		--tag "$(IMG_REGISTRY)/$1:$(FREE5GC_VERSION)" \
+		--tag "$(IMG_REGISTRY)/$1:latest" \
+		--build-arg "VERSION=$(FREE5GC_VERSION)" \
+		--build-arg "REGISTRY=$(IMG_REGISTRY)" \
+		--build-arg "BASE_IMAGE=$(BASE_IMAGE)" \
+		--build-arg "BUILDER_IMAGE=$(BUILDER_IMAGE)" \
+		--file "./$1/Dockerfile" . \
 		$(BUILD_ARGS)
 endef
 
 define push
-	docker push $(IMG_REGISTRY)/$1:$(FREE5GC_VERSION)
-	docker push $(IMG_REGISTRY)/$1:latest
+	docker push "$(IMG_REGISTRY)/$1:$(FREE5GC_VERSION)"
+	docker push "$(IMG_REGISTRY)/$1:latest"
 endef
 
 .PHONY: all
-all: build push
+all: build
 
 .PHONY: build
 build:
