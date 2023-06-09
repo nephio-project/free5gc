@@ -26,7 +26,7 @@ import (
 func TestGetIntConfigSlice(t *testing.T) {
 	gw1 := "10.10.12.1"
 	intf1 := workloadv1alpha1.InterfaceConfig{
-		Name: "N4",
+		Name: "n4",
 		IPv4: &workloadv1alpha1.IPv4{
 			Address: "10.10.12.10/24",
 			Gateway: &gw1,
@@ -34,7 +34,7 @@ func TestGetIntConfigSlice(t *testing.T) {
 	}
 	gw2 := "10.10.11.1"
 	intf2 := workloadv1alpha1.InterfaceConfig{
-		Name: "N4",
+		Name: "n4",
 		IPv4: &workloadv1alpha1.IPv4{
 			Address: "10.10.11.10/24",
 			Gateway: &gw2,
@@ -44,16 +44,16 @@ func TestGetIntConfigSlice(t *testing.T) {
 		intf1, intf2,
 	}
 
-	got := getIntConfigSlice(interfaces, "N4")
+	got := getIntConfigSlice(interfaces, "n4")
 	if !reflect.DeepEqual(got, interfaces) {
-		t.Errorf("getIntConfigSlice(%v, \"N4\") returned %v, want %v", interfaces, got, interfaces)
+		t.Errorf("getIntConfigSlice(%v, \"n4\") returned %v, want %v", interfaces, got, interfaces)
 	}
 }
 
 func TestGetIntConfigSliceEmpty(t *testing.T) {
 	gw1 := "10.10.12.1"
 	intf1 := workloadv1alpha1.InterfaceConfig{
-		Name: "N4",
+		Name: "n4",
 		IPv4: &workloadv1alpha1.IPv4{
 			Address: "10.10.12.10/24",
 			Gateway: &gw1,
@@ -64,16 +64,16 @@ func TestGetIntConfigSliceEmpty(t *testing.T) {
 	}
 
 	want := []workloadv1alpha1.InterfaceConfig{}
-	got := getIntConfigSlice(interfaces, "N6")
+	got := getIntConfigSlice(interfaces, "n6")
 	if len(got) != 0 {
-		t.Errorf("getIntConfigSlice(%v, \"N6\") returned %v, want %v", interfaces, got, want)
+		t.Errorf("getIntConfigSlice(%v, \"n6\") returned %v, want %v", interfaces, got, want)
 	}
 }
 
 func TestGetIntConfig(t *testing.T) {
 	gw := "10.10.12.1"
 	intf := workloadv1alpha1.InterfaceConfig{
-		Name: "N4",
+		Name: "n4",
 		IPv4: &workloadv1alpha1.IPv4{
 			Address: "10.10.12.10/24",
 			Gateway: &gw,
@@ -82,18 +82,18 @@ func TestGetIntConfig(t *testing.T) {
 	interfaces := []workloadv1alpha1.InterfaceConfig{
 		intf,
 	}
-	got, _ := getIntConfig(interfaces, "N4")
+	got, _ := getIntConfig(interfaces, "n4")
 	want := "10.10.12.10/24"
 
 	if !reflect.DeepEqual(*got, intf) {
-		t.Errorf("getIntConfig(%v, \"N4\") returned %+v, want %v", interfaces, got, want)
+		t.Errorf("getIntConfig(%v, \"n4\") returned %+v, want %v", interfaces, got, want)
 	}
 }
 
 func TestGetIntConfigNotFound(t *testing.T) {
 	gw := "10.10.12.1"
 	intf := workloadv1alpha1.InterfaceConfig{
-		Name: "N4",
+		Name: "n4",
 		IPv4: &workloadv1alpha1.IPv4{
 			Address: "10.10.12.10/24",
 			Gateway: &gw,
@@ -102,17 +102,17 @@ func TestGetIntConfigNotFound(t *testing.T) {
 	interfaces := []workloadv1alpha1.InterfaceConfig{
 		intf,
 	}
-	got, _ := getIntConfig(interfaces, "N4")
+	got, _ := getIntConfig(interfaces, "n4")
 
 	if got == nil {
-		t.Errorf("getIntConfig(%v, \"N3\") returned %v, want %v", interfaces, got, "")
+		t.Errorf("getIntConfig(%v, \"n3\") returned %v, want %v", interfaces, got, "")
 	}
 }
 
 func TestGetIPv4(t *testing.T) {
 	gw := "10.10.12.1"
 	intf := workloadv1alpha1.InterfaceConfig{
-		Name: "N4",
+		Name: "n4",
 		IPv4: &workloadv1alpha1.IPv4{
 			Address: "10.10.12.10/24",
 			Gateway: &gw,
@@ -121,18 +121,18 @@ func TestGetIPv4(t *testing.T) {
 	interfaces := []workloadv1alpha1.InterfaceConfig{
 		intf,
 	}
-	got, _ := getIPv4(interfaces, "N4")
+	got, _ := getIPv4(interfaces, "n4")
 	want := "10.10.12.10"
 
 	if got != want {
-		t.Errorf("getIPv4(%v, \"N4\") returned %v, want %v", interfaces, got, want)
+		t.Errorf("getIPv4(%v, \"n4\") returned %v, want %v", interfaces, got, want)
 	}
 }
 
 func TestGetIPv4NotFound(t *testing.T) {
 	gw := "10.10.12.1"
 	intf := workloadv1alpha1.InterfaceConfig{
-		Name: "N4",
+		Name: "n4",
 		IPv4: &workloadv1alpha1.IPv4{
 			Address: "10.10.12.10/24",
 			Gateway: &gw,
@@ -141,10 +141,10 @@ func TestGetIPv4NotFound(t *testing.T) {
 	interfaces := []workloadv1alpha1.InterfaceConfig{
 		intf,
 	}
-	got, _ := getIPv4(interfaces, "N3")
+	got, _ := getIPv4(interfaces, "n3")
 
 	if got != "" {
-		t.Errorf("getIPv4(%v, \"N3\") returned %v, want %v", interfaces, got, "")
+		t.Errorf("getIPv4(%v, \"n3\") returned %v, want %v", interfaces, got, "")
 	}
 }
 
@@ -155,7 +155,7 @@ func TestGetNetworkInsance(t *testing.T) {
 	ns := workloadv1alpha1.NetworkInstance{
 		Name: "vpc-internet",
 		Interfaces: []string{
-			"N6",
+			"n6",
 		},
 		DataNetworks: []workloadv1alpha1.DataNetwork{
 			{
@@ -174,22 +174,22 @@ func TestGetNetworkInsance(t *testing.T) {
 		ns,
 	}
 
-	got, b := getNetworkInsance(upfDeployment.Spec, "N6")
+	got, b := getNetworkInsance(upfDeployment.Spec, "n6")
 
 	if b != true {
-		t.Errorf("getNetworkInstance(%+v, \"N6\") returned %v, want %v", upfDeployment.Spec, got, want)
+		t.Errorf("getNetworkInstance(%+v, \"n6\") returned %v, want %v", upfDeployment.Spec, got, want)
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("getNetworkInstance(%+v, \"N6\") returned %+v, want %+v", upfDeployment.Spec, got, want)
+		t.Errorf("getNetworkInstance(%+v, \"n6\") returned %+v, want %+v", upfDeployment.Spec, got, want)
 	}
 }
 
 func TestGetNetworkInsanceNoInstance(t *testing.T) {
 	upfDeployment := newUpfDeployInstance("test-upf-deployment")
 
-	_, b := getNetworkInsance(upfDeployment.Spec, "N6-1")
+	_, b := getNetworkInsance(upfDeployment.Spec, "n6-1")
 
 	if b != false {
-		t.Errorf("getNetworkInstance(%+v, \"N6-1\") returned %v, want %v", upfDeployment.Spec, b, false)
+		t.Errorf("getNetworkInstance(%+v, \"n6-1\") returned %v, want %v", upfDeployment.Spec, b, false)
 	}
 }

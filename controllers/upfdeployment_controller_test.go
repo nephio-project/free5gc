@@ -38,7 +38,7 @@ func newNxInterface(name string) workloadv1alpha1.InterfaceConfig {
 	case "n3":
 		gw := "10.10.10.1"
 		n3int := workloadv1alpha1.InterfaceConfig{
-			Name: "N3",
+			Name: "n3",
 			IPv4: &workloadv1alpha1.IPv4{
 				Address: "10.10.10.10/24",
 				Gateway: &gw,
@@ -49,7 +49,7 @@ func newNxInterface(name string) workloadv1alpha1.InterfaceConfig {
 	case "n4":
 		gw := "10.10.11.1"
 		n4int := workloadv1alpha1.InterfaceConfig{
-			Name: "N4",
+			Name: "n4",
 			IPv4: &workloadv1alpha1.IPv4{
 				Address: "10.10.11.10/24",
 				Gateway: &gw,
@@ -60,7 +60,7 @@ func newNxInterface(name string) workloadv1alpha1.InterfaceConfig {
 	case "n6":
 		gw := "10.10.12.1"
 		n6int := workloadv1alpha1.InterfaceConfig{
-			Name: "N6",
+			Name: "n6",
 			IPv4: &workloadv1alpha1.IPv4{
 				Address: "10.10.12.10/24",
 				Gateway: &gw,
@@ -101,7 +101,7 @@ func newUpfDeployInstance(name string) *workloadv1alpha1.UPFDeployment {
 					{
 						Name: "vpc-internet",
 						Interfaces: []string{
-							"N6",
+							"n6",
 						},
 						DataNetworks: []workloadv1alpha1.DataNetwork{
 							{
@@ -172,17 +172,17 @@ func TestGetNad(t *testing.T) {
 
 	want := `[
         {"name": "test-upf-deployment-n3",
-         "interface": "N3",
+         "interface": "n3",
          "ips": ["10.10.10.10/24"],
          "gateways": ["10.10.10.1"]
         },
         {"name": "test-upf-deployment-n4",
-         "interface": "N4",
+         "interface": "n4",
          "ips": ["10.10.11.10/24"],
          "gateways": ["10.10.11.1"]
         },
         {"name": "test-upf-deployment-n6",
-         "interface": "N6",
+         "interface": "n6",
          "ips": ["10.10.12.10/24"],
          "gateways": ["10.10.12.1"]
         }
@@ -201,15 +201,15 @@ func TestFree5gcUPFCreateConfigmap(t *testing.T) {
 		t.Errorf("free5gcUPFCreateConfigmap() returned unexpected error %v", err)
 	}
 
-	n4IP, _ := getIPv4(upfDeploymentInstance.Spec.Interfaces, "N4")
-	n3IP, _ := getIPv4(upfDeploymentInstance.Spec.Interfaces, "N3")
-	n6IP, _ := getIntConfig(upfDeploymentInstance.Spec.Interfaces, "N6")
+	n4IP, _ := getIPv4(upfDeploymentInstance.Spec.Interfaces, "n4")
+	n3IP, _ := getIPv4(upfDeploymentInstance.Spec.Interfaces, "n3")
+	n6IP, _ := getIntConfig(upfDeploymentInstance.Spec.Interfaces, "n6")
 
 	upfcfgStruct := UPFcfgStruct{}
 	upfcfgStruct.PFCP_IP = n4IP
 	upfcfgStruct.GTPU_IP = n3IP
 	upfcfgStruct.N6gw = *n6IP.IPv4.Gateway
-	n6Cfg, _ := getNetworkInsance(upfDeploymentInstance.Spec, "N6")
+	n6Cfg, _ := getNetworkInsance(upfDeploymentInstance.Spec, "n6")
 	upfcfgStruct.N6cfg = n6Cfg
 
 	upfcfgTemplate := template.New("UPFCfg")
@@ -489,17 +489,17 @@ func TestFree5gcUPFDeployment(t *testing.T) {
 						"workload.nephio.org/configMapVersion": "111111",
 						"k8s.v1.cni.cncf.io/networks": `[
         {"name": "test-upf-deployment-n3",
-         "interface": "N3",
+         "interface": "n3",
          "ips": ["10.10.10.10/24"],
          "gateways": ["10.10.10.1"]
         },
         {"name": "test-upf-deployment-n4",
-         "interface": "N4",
+         "interface": "n4",
          "ips": ["10.10.11.10/24"],
          "gateways": ["10.10.11.1"]
         },
         {"name": "test-upf-deployment-n6",
-         "interface": "N6",
+         "interface": "n6",
          "ips": ["10.10.12.10/24"],
          "gateways": ["10.10.12.1"]
         }
