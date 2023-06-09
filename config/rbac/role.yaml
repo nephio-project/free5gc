@@ -2,7 +2,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: manager-role
+  name: free5gc-operator-controller-role
 rules:
 - apiGroups:
   - ""
@@ -19,10 +19,8 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - endpoints
-  - events
+  - configmaps
   - services
-  - services/finalizers
   verbs:
   - create
   - delete
@@ -31,6 +29,13 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
 - apiGroups:
   - ""
   resources:
@@ -58,13 +63,6 @@ rules:
   verbs:
   - get
 - apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - create
-  - patch
-- apiGroups:
   - k8s.cni.cncf.io
   resources:
   - network-attachment-definitions
@@ -75,7 +73,7 @@ rules:
 - apiGroups:
   - workload.nephio.org
   resources:
-  - AMFdeployments
+  - amfdeployments
   verbs:
   - create
   - delete
@@ -87,13 +85,7 @@ rules:
 - apiGroups:
   - workload.nephio.org
   resources:
-  - AMFdeployments/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - workload.nephio.org
-  resources:
-  - AMFdeployments/status
+  - amfdeployments/status
   verbs:
   - get
   - patch
@@ -110,12 +102,6 @@ rules:
   - patch
   - update
   - watch
-- apiGroups:
-  - workload.nephio.org
-  resources:
-  - smfdeployments/finalizers
-  verbs:
-  - update
 - apiGroups:
   - workload.nephio.org
   resources:
@@ -136,12 +122,6 @@ rules:
   - patch
   - update
   - watch
-- apiGroups:
-  - workload.nephio.org
-  resources:
-  - upfdeployments/finalizers
-  verbs:
-  - update
 - apiGroups:
   - workload.nephio.org
   resources:
