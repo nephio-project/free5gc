@@ -19,6 +19,21 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - endpoints
+  - events
+  - services
+  - services/finalizers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - pods
   verbs:
   - get
@@ -79,32 +94,6 @@ rules:
   - workload.nephio.org
   resources:
   - AMFdeployments/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - workload.nephio.org
-  resources:
-  - amfdeployments
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - workload.nephio.org
-  resources:
-  - amfdeployments/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - workload.nephio.org
-  resources:
-  - amfdeployments/status
   verbs:
   - get
   - patch
