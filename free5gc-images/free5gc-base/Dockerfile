@@ -1,6 +1,8 @@
 ARG BUILDER_IMAGE=golang
 ARG BASE_IMAGE=alpine
 
+# See: https://github.com/free5gc/free5gc/wiki/Installation
+
 #
 # Builder
 #
@@ -9,21 +11,19 @@ FROM $BUILDER_IMAGE AS builder
 ARG VERSION=3.2.1
 ENV VERSION=$VERSION
 
-# Based on Debian Bullseye
-# See: https://github.com/free5gc/free5gc/wiki/Installation
-
-RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+# Note: "golang" builder image is based on Debian
+RUN curl --silent --show-error https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor > /etc/apt/trusted.gpg.d/yarn.gpg
 RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list
-RUN apt update
-RUN apt install --assume-yes nodejs yarn
+RUN apt-get update
+RUN apt-get install --assume-yes nodejs yarn
 
-RUN cd $GOPATH/src \
-    && git clone --branch v$VERSION --recursive --jobs $(nproc) https://github.com/free5gc/free5gc.git
+RUN cd "$GOPATH/src" \
+    && git -c advice.detachedHead=false clone --branch "v$VERSION" --recursive --jobs "$(nproc)" https://github.com/free5gc/free5gc.git
 
-RUN cd $GOPATH/src/free5gc \
+RUN cd "$GOPATH/src/free5gc" \
     && make
 
-RUN cd $GOPATH/src/free5gc \
+RUN cd "$GOPATH/src/free5gc" \
     && make webconsole
 
 #
