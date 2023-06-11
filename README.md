@@ -1,11 +1,15 @@
 # free5gc-operator
-Sample free5gc operator for Nephio
+
+Sample free5GC operator for Nephio.
 
 ## Description
-Nephio free5gc operator takes the Nephio community produced XXXDeployment (where XXX = AMF | SMF | UPF) custom resources, and deploys the corresponding free5gc AMF | SMF | UPF onto the cluster based on the CR's specifications.
+
+Nephio free5GC operator takes the Nephio community produced XXXDeployment (where XXX = AMF | SMF | UPF) custom resources, and deploys the corresponding free5GC AMF | SMF | UPF onto the cluster based on the CR's specifications.
 
 ## Getting Started
-Prior to running free5gc operator, multus needs to be installed on cluster, and standard CNI binaries need to be installed on /opt/cni/bin directory. We can verify these conditions via:
+
+Prior to running the free5GC operator, Multus needs to be installed on cluster, and standard CNI binaries need to be installed on
+`/opt/cni/bin` directory. We can verify these conditions via:
 
 ```sh
 $ kubectl get daemonset -n kube-system
@@ -39,16 +43,17 @@ total 51516
 -rwxr-xr-x 1 root root 3138008 Sep 17 08:14 vlan
 ```
 
-for free5gc, at least macvlan needs to be installed.
+For free5GC at least macvlan needs to be installed.
 
 ### Loading the CRD
-Under the free5gc-operator directory, do:
+
+Under the `free5gc-operator` directory, do:
 
 ```sh
 make install
 ```
 
-and the following CRD should be loaded:
+And the following CRD should be loaded:
 
 ```sh
 $ kubectl get crds | grep nephio
@@ -57,14 +62,15 @@ upfdeployments.workload.nephio.io                         2022-10-10T07:54:28Z
 
 ### Run the controller
 
-Under the free5gc-operator directory, do:
+Under the `free5gc-operator` directory, do:
 
 ```sh
 make run
 ```
 
 ### Deploy the controller
-Change image varible in Makefile:
+
+Change image variable in `Makefile`:
 
 ```sh
 REGISTRY ?= registry
@@ -72,7 +78,7 @@ PROJECT ?= free5gc-operator
 TAG ?= latest
 ```
 
-build and push free5gc-operator container into registry
+build and push `free5gc-operator` container into registry:
 
 ```sh
 $ make docker-build docker-push
