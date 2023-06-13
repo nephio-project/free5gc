@@ -1,45 +1,50 @@
 apiVersion: v1
 kind: Namespace
+
 metadata:
+  name: free5gc
   labels:
-    control-plane: controller-manager
+    control-plane: free5gc-operator
     app.kubernetes.io/name: namespace
-    app.kubernetes.io/instance: system
-    app.kubernetes.io/component: manager
-    app.kubernetes.io/created-by: free5gc-operator
+    app.kubernetes.io/instance: free5gc
+    app.kubernetes.io/component: operator
+    app.kubernetes.io/created-by: nephio
     app.kubernetes.io/part-of: free5gc-operator
     app.kubernetes.io/managed-by: kustomize
-  name: system
+
 ---
+
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
-  name: controller-manager
-  namespace: system
+  namespace: free5gc
+  name: free5gc-operator
   labels:
-    control-plane: controller-manager
+    control-plane: free5gc-operator
     app.kubernetes.io/name: deployment
-    app.kubernetes.io/instance: controller-manager
-    app.kubernetes.io/component: manager
-    app.kubernetes.io/created-by: free5gc-operator
+    app.kubernetes.io/instance: free5gc-operator
+    app.kubernetes.io/component: operator
+    app.kubernetes.io/created-by: nephio
     app.kubernetes.io/part-of: free5gc-operator
     app.kubernetes.io/managed-by: kustomize
+
 spec:
   selector:
     matchLabels:
-      control-plane: controller-manager
+      control-plane: free5gc-operator
   replicas: 1
   template:
     metadata:
       annotations:
-        kubectl.kubernetes.io/default-container: manager
+        kubectl.kubernetes.io/default-container: operator
       labels:
-        control-plane: controller-manager
+        control-plane: free5gc-operator
     spec:
       # TODO(user): Uncomment the following code to configure the nodeAffinity expression
       # according to the platforms which are supported by your solution.
       # It is considered best practice to support multiple architectures. You can
-      # build your manager image using the makefile target docker-buildx.
+      # build your operator image using the makefile target docker-buildx.
       # affinity:
       #   nodeAffinity:
       #     requiredDuringSchedulingIgnoredDuringExecution:
@@ -66,12 +71,12 @@ spec:
         # seccompProfile:
         #   type: RuntimeDefault
       containers:
-      - command:
-        - /manager
+      - name: operator
+        image: operator
+        command:
+        - /free5gc-operator
         args:
         - --leader-elect
-        image: controller:latest
-        name: manager
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -98,5 +103,5 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
-      serviceAccountName: controller-manager
+      serviceAccountName: free5gc-operator
       terminationGracePeriodSeconds: 10

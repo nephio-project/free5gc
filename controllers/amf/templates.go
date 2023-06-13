@@ -28,8 +28,6 @@ info:
   description: AMF initial local configuration
 
 configuration:
-     
-  - namf-oam
 
   ngapIpList:
     - {{ .N2_IP }}

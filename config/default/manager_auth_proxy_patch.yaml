@@ -2,9 +2,11 @@
 # controller manager, it performs RBAC authorization against the Kubernetes API using SubjectAccessReviews.
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
-  name: controller-manager
-  namespace: system
+  namespace: free5gc
+  name: free5gc-operator
+
 spec:
   template:
     spec:
@@ -48,7 +50,7 @@ spec:
             requests:
               cpu: 5m
               memory: 64Mi
-        - name: manager
+        - name: operator
           args:
             - "--health-probe-bind-address=:8081"
             - "--metrics-bind-address=127.0.0.1:8080"
