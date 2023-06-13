@@ -1,8 +1,8 @@
 resources:
-- manager.yaml
+- operator.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
-- name: controller
+- name: operator
   newName: docker.io/nephio/free5gc-operator
   newTag: latest
