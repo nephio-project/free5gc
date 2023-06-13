@@ -24,56 +24,56 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
+	"github.com/nephio-project/free5gc/controllers/amf"
+	"github.com/nephio-project/free5gc/controllers/smf"
+	"github.com/nephio-project/free5gc/controllers/upf"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
+	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	runscheme "sigs.k8s.io/controller-runtime/pkg/scheme"
-
-	workloadv1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
-	"github.com/nephio-project/free5gc/controllers"
 	//+kubebuilder:scaffold:imports
 )
 
 var (
 	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	setupLog = controllerruntime.Log.WithName("setup")
 )
 
 func init() {
-
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
-	// utilruntime.Must(workloadv1alpha1.AddToScheme(scheme))
-
+	// utilruntime.Must(nephiov1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	var probeAddr string
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
+	var metricsAddress string
+	var healthProbeAddress string
+	var leaderElect bool
+
+	flag.StringVar(&metricsAddress, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&healthProbeAddress, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.BoolVar(&leaderElect, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	opts := zap.Options{
+
+	zapOptions := zap.Options{
 		Development: true,
 	}
-	opts.BindFlags(flag.CommandLine)
+	zapOptions.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	controllerruntime.SetLogger(zap.New(zap.UseFlagOptions(&zapOptions)))
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	manager, err := controllerruntime.NewManager(controllerruntime.GetConfigOrDie(), controllerruntime.Options{
 		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
+		MetricsBindAddress:     metricsAddress,
 		Port:                   9443,
-		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
+		HealthProbeBindAddress: healthProbeAddress,
+		LeaderElection:         leaderElect,
 		LeaderElectionID:       "5089c67f.nephio.org",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
@@ -88,66 +88,62 @@ func main() {
 		// LeaderElectionReleaseOnCancel: true,
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
+		fail(err, "unable to start manager")
 	}
 
-	schemeBuilder := &runscheme.Builder{GroupVersion: workloadv1alpha1.GroupVersion}
-	schemeBuilder.Register(&workloadv1alpha1.UPFDeployment{}, &workloadv1alpha1.UPFDeploymentList{})
-	if err := schemeBuilder.AddToScheme(mgr.GetScheme()); err != nil {
-		setupLog.Error(err, "Not able to register UPFDeployment kind")
-		os.Exit(1)
+	schemeBuilder := &runscheme.Builder{GroupVersion: nephiov1alpha1.GroupVersion}
+	schemeBuilder.Register(&nephiov1alpha1.UPFDeployment{}, &nephiov1alpha1.UPFDeploymentList{})
+	if err := schemeBuilder.AddToScheme(manager.GetScheme()); err != nil {
+		fail(err, "Not able to register UPFDeployment kind")
 	}
 
-	schemeBuilder.Register(&workloadv1alpha1.SMFDeployment{}, &workloadv1alpha1.SMFDeploymentList{})
-	if err := schemeBuilder.AddToScheme(mgr.GetScheme()); err != nil {
-		setupLog.Error(err, "Not able to register SMFDeployment kind")
-		os.Exit(1)
+	schemeBuilder.Register(&nephiov1alpha1.SMFDeployment{}, &nephiov1alpha1.SMFDeploymentList{})
+	if err := schemeBuilder.AddToScheme(manager.GetScheme()); err != nil {
+		fail(err, "Not able to register SMFDeployment kind")
 	}
 
-	schemeBuilder.Register(&workloadv1alpha1.AMFDeployment{}, &workloadv1alpha1.AMFDeploymentList{})
-	if err := schemeBuilder.AddToScheme(mgr.GetScheme()); err != nil {
-		setupLog.Error(err, "Not able to register AMFDeployment kind")
-		os.Exit(1)
+	schemeBuilder.Register(&nephiov1alpha1.AMFDeployment{}, &nephiov1alpha1.AMFDeploymentList{})
+	if err := schemeBuilder.AddToScheme(manager.GetScheme()); err != nil {
+		fail(err, "Not able to register AMFDeployment kind")
 	}
 
-	if err = (&controllers.UPFDeploymentReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "UPFDeployment")
-		os.Exit(1)
+	if err = (&upf.UPFDeploymentReconciler{
+		Client: manager.GetClient(),
+		Scheme: manager.GetScheme(),
+	}).SetupWithManager(manager); err != nil {
+		fail(err, "unable to create controller", "controller", "UPFDeployment")
 	}
 
-	if err = (&controllers.SMFDeploymentReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	if err = (&smf.SMFDeploymentReconciler{
+		Client: manager.GetClient(),
+		Scheme: manager.GetScheme(),
+	}).SetupWithManager(manager); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SMFDeployment")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.AMFDeploymentReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "AMFDeployment")
-		os.Exit(1)
+	if err = (&amf.AMFDeploymentReconciler{
+		Client: manager.GetClient(),
+		Scheme: manager.GetScheme(),
+	}).SetupWithManager(manager); err != nil {
+		fail(err, "unable to create controller", "controller", "AMFDeployment")
 	}
 	//+kubebuilder:scaffold:builder
 
-	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up health check")
-		os.Exit(1)
+	if err := manager.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		fail(err, "unable to set up health check")
 	}
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
+	if err := manager.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		fail(err, "unable to set up ready check")
 	}
 
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
+	if err := manager.Start(controllerruntime.SetupSignalHandler()); err != nil {
+		fail(err, "problem running manager")
 	}
+}
+
+func fail(err error, msg string, keysAndValues ...any) {
+	setupLog.Error(err, msg, keysAndValues...)
+	os.Exit(1)
 }

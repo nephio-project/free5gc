@@ -13,3 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+package controllers
+
+const (
+	ConfigMapVersionAnnotation = "workload.nephio.org/configMapVersion"
+
+	// TODO(jbelamaric): Update to use ImageConfig spec.ImagePaths["upf"]
+	AMFImage = "docker.io/nephio/free5gc-amf:3.2.1"
+	SMFImage = "docker.io/nephio/free5gc-smf:3.2.1"
+	UPFImage = "docker.io/nephio/free5gc-upf:3.2.1"
+)

@@ -4,6 +4,7 @@ GOSEC_VER ?= 2.15.0
 TEST_COVERAGE_FILE=lcov.info
 TEST_COVERAGE_HTML_FILE=coverage_unit.html
 TEST_COVERAGE_FUNC_FILE=func_coverage.out
+ignore-not-found ?= false
 
 # CONTAINER_RUNNABLE checks if tests and lint check can be run inside container.
 PODMAN ?= $(shell podman -v > /dev/null 2>&1; echo $$?)
@@ -33,7 +34,7 @@ IMG ?= $(REGISTRY)/$(PROJECT):$(TAG)
 endif
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.26.1
+ENVTEST_K8S_VERSION = 1.27.1
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -154,10 +155,6 @@ docker-push: ## Push docker image with the manager.
 # 	$(KPT) fn eval --image gcr.io/kpt-fn/set-namespace:v0.1.1 ${KPT_PKG_DIR} -- namespace=free5gc
 
 ##@ Deployment
-
-ifndef ignore-not-found
-	ignore-not-found = false
-endif
 
 .PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
