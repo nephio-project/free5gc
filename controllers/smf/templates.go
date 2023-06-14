@@ -79,35 +79,30 @@ configuration:
 
   userplaneInformation:
     upNodes:
-{{- range $upf := .UPF_LIST }}
       gNB1:
         type: AN
-        {{ $upf.Name }}:
+      UPF:
         type: UPF
-        nodeID: {{ $upf.N4IP }}
+        nodeID: 10.100.50.241
         sNssaiUpfInfos:
         - sNssai:
             sst: 1
             sd: 010203
-          dnnUpfInfoList:
-  {{- range $n6Instances := $upf.N6Cfg }}
-    {{- range $dnn := $upf.DataNetworks }}
+          dnnUpfInfoList: {{- range $netInstance := .DNN_LIST }}
+  {{- range $dnn := $netInstance.DataNetworks }}
             - dnn: {{ $dnn.Name }}
               pools:
               - cidr: {{(index $dnn.Pool 0).Prefix}}
-    {{- end }}
   {{- end }}
+{{- end}}
         interfaces:
         - interfaceType: N3
           endpoints:
-          - {{ $upf.N3IP }}
+          - 10.100.50.233
           networkInstance: internet
-{{- end}}
     links:
-{{- range $upf := .UPF_LIST }}
     - A: gNB1
-      B: {{ $upf.Name }}
-{{- end}}
+      B: UPF
 
   locality: area1
 
@@ -167,16 +162,9 @@ var (
 	ueRoutingConfigurationTemplate = template.Must(template.New("SMFUERoutingConfiguration").Parse(ueRoutingConfigurationTemplateSource))
 )
 
-type UpfPeerConfigTemplate struct {
-	Name  string
-	N3IP  string
-	N4IP  string
-	N6Cfg []nephiov1alpha1.NetworkInstance
-}
-
 type configurationTemplateValues struct {
 	PFCP_IP  string
-	UPF_LIST []UpfPeerConfigTemplate
+	DNN_LIST []nephiov1alpha1.NetworkInstance
 }
 
 func renderConfigurationTemplate(values configurationTemplateValues) (string, error) {
