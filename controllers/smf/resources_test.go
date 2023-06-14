@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
+	refv1alpha1 "github.com/nephio-project/api/nf_references/v1alpha1"
 	nephioreqv1alpha1 "github.com/nephio-project/api/nf_requirements/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers"
 	appsv1 "k8s.io/api/apps/v1"
@@ -151,8 +152,9 @@ func TestCreateDeployment(t *testing.T) {
 
 func TestCreateConfigMap(t *testing.T) {
 	log := log.FromContext(context.TODO())
+	var refList []*refv1alpha1.ConfigRef
 	smfDeployment := newSmfDeployment("test-smf-deployment")
-	got, err := createConfigMap(log, smfDeployment)
+	got, err := createConfigMap(log, smfDeployment, refList)
 	if err != nil {
 		t.Errorf("createConfigMap() returned unexpected error %v", err)
 	}

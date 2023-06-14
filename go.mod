@@ -2,6 +2,8 @@ module github.com/nephio-project/free5gc
 
 go 1.20
 
+replace github.com/nephio-project/api => github.com/s3wong/api v0.0.0-20230614061924-30334a73d9ef
+
 require (
 	github.com/go-logr/logr v1.2.4
 	github.com/nephio-project/api v0.0.0-20230609201130-a549bc37a8c0
