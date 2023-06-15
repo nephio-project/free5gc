@@ -74,7 +74,7 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	err := r.Client.Get(ctx, req.NamespacedName, amfDeployment)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			log.Info("AMFDeployment resource not found. Ignoring since object must be deleted")
+			log.Info("AMFDeployment resource not found, ignoring sibecausence object must be deleted")
 			return reconcile.Result{}, nil
 		}
 		log.Error(err, "Failed to get AMFDeployment")
@@ -84,7 +84,7 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	namespace := amfDeployment.Namespace
 
 	configMapFound := false
-	configMapName := amfDeployment.Name + "-amf-configmap"
+	configMapName := amfDeployment.Name
 	var configMapVersion string
 	currentConfigMap := new(apiv1.ConfigMap)
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: configMapName, Namespace: namespace}, currentConfigMap); err == nil {
@@ -113,17 +113,17 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		// On the subsequent runs it gets undelying depoyment Conditions and use the last one to decide if status has to be updated.
 		if deployment.DeletionTimestamp == nil {
 			if err := r.syncStatus(ctx, deployment, amfDeployment); err != nil {
-				log.Error(err, "Failed to update AMFDeployment status", "AMFDeployment.namespace", namespace, "AMFDeployment.name", amfDeployment.Name)
+				log.Error(err, "Failed to update status")
 				return reconcile.Result{}, err
 			}
 		}
 
 		if currentDeployment.Spec.Template.Annotations[controllers.ConfigMapVersionAnnotation] != configMapVersion {
-			log.Info("ConfigMap has been updated. Rolling Deployment pods.", "AMFDeployment.namespace", namespace, "AMFDeployment.name", amfDeployment.Name)
+			log.Info("ConfigMap has been updated, rolling Deployment pods", "Deployment.namespace", currentDeployment.Namespace, "Deployment.name", currentDeployment.Name)
 			currentDeployment.Spec.Template.Annotations[controllers.ConfigMapVersionAnnotation] = configMapVersion
 
 			if err := r.Update(ctx, currentDeployment); err != nil {
-				log.Error(err, "Failed to update Deployment", "AMFDeployment.namespace", currentDeployment.Namespace, "AMFDeployment.name", currentDeployment.Name)
+				log.Error(err, "Failed to update Deployment", "Deployment.namespace", currentDeployment.Namespace, "Deployment.name", currentDeployment.Name)
 				return reconcile.Result{}, err
 			}
 
@@ -133,37 +133,37 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	if configMap, err := createConfigMap(log, amfDeployment); err == nil {
 		if !configMapFound {
-			log.Info("Creating AMFDeployment configmap", "AMFDeployment.namespace", namespace, "ConfigMap.name", configMap.Name)
+			log.Info("Creating ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
 
 			// Set the controller reference, specifying that AMFDeployment controling underlying deployment
 			if err := ctrl.SetControllerReference(amfDeployment, configMap, r.Scheme); err != nil {
-				log.Error(err, "Got error while setting Owner reference on configmap.", "AMFDeployment.namespace", namespace)
+				log.Error(err, "Got error while setting Owner reference on configmap.", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
 			}
 
 			if err := r.Client.Create(ctx, configMap); err != nil {
-				log.Error(err, fmt.Sprintf("Failed to create ConfigMap %s\n", err.Error()))
+				log.Error(err, "Failed to create ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
 				return reconcile.Result{}, err
 			}
 
 			configMapVersion = configMap.ResourceVersion
 		}
 	} else {
-		log.Error(err, fmt.Sprintf("Failed to create ConfigMap %s\n", err.Error()))
+		log.Error(err, "Failed to create ConfigMap")
 		return reconcile.Result{}, err
 	}
 
 	if !serviceFound {
 		service := createService(amfDeployment)
 
-		log.Info("Creating AMFDeployment service", "AMFDeployment.namespace", namespace, "Service.name", service.Name)
+		log.Info("Creating AMFDeployment service", "Service.namespace", service.Namespace, "Service.name", service.Name)
 
 		// Set the controller reference, specifying that AMFDeployment controling underlying deployment
 		if err := ctrl.SetControllerReference(amfDeployment, service, r.Scheme); err != nil {
-			log.Error(err, "Got error while setting Owner reference on AMF service.", "AMFDeployment.namespace", namespace)
+			log.Error(err, "Got error while setting Owner reference on AMF service", "Service.namespace", service.Namespace, "Service.name", service.Name)
 		}
 
 		if err := r.Client.Create(ctx, service); err != nil {
-			log.Error(err, fmt.Sprintf("Failed to create Service %s\n", err.Error()))
+			log.Error(err, "Failed to create Service", "Service.namespace", service.Namespace, "Service.name", service.Name)
 			return reconcile.Result{}, err
 		}
 	}
@@ -174,18 +174,18 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			if ok := controllers.ValidateNetworkAttachmentDefinitions(ctx, r.Client, log, amfDeployment.Kind, deployment); ok {
 				// Set the controller reference, specifying that AMFDeployment controls the underlying Deployment
 				if err := ctrl.SetControllerReference(amfDeployment, deployment, r.Scheme); err != nil {
-					log.Error(err, "Got error while setting Owner reference on deployment.", "AMFDeployment.namespace", namespace)
+					log.Error(err, "Got error while setting Owner reference on deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
 				}
 
-				log.Info("Creating AMFDeployment", "AMFDeployment.namespace", namespace, "AMFDeployment.name", amfDeployment.Name)
+				log.Info("Creating Deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
 				if err := r.Client.Create(ctx, deployment); err != nil {
-					log.Error(err, "Failed to create new Deployment", "AMFDeployment.namespace", namespace, "AMFDeployment.name", amfDeployment.Name)
+					log.Error(err, "Failed to create new Deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
 				}
 
 				// TODO(tliron): explain why we need requeueing (do we?)
 				return reconcile.Result{RequeueAfter: time.Duration(30) * time.Second}, nil
 			} else {
-				log.Info("Not all NetworkAttachDefinitions available in current namespace. Requeue in 10 sec.", "AMFDeployment.namespace", namespace)
+				log.Info("Not all NetworkAttachDefinitions available in current namespace, requeuing")
 				return reconcile.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
 			}
 		}
