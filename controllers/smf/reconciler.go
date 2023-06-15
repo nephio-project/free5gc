@@ -18,7 +18,6 @@ package smf
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
@@ -74,7 +73,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	err := r.Client.Get(ctx, req.NamespacedName, smfDeployment)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			log.Info("SMFDeployment resource not found. Ignoring since object must be deleted")
+			log.Info("SMFDeployment resource not found, ignoring because object must be deleted")
 			return reconcile.Result{}, nil
 		}
 		log.Error(err, "Failed to get SMFDeployment")
@@ -84,7 +83,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	namespace := smfDeployment.Namespace
 
 	configMapFound := false
-	configMapName := smfDeployment.Name + "-smf-configmap"
+	configMapName := smfDeployment.Name
 	var configMapVersion string
 	currentConfigMap := new(apiv1.ConfigMap)
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: configMapName, Namespace: namespace}, currentConfigMap); err == nil {
@@ -93,7 +92,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	serviceFound := false
-	serviceName := "smf-nsmf"
+	serviceName := smfDeployment.Name
 	currentService := new(apiv1.Service)
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, currentService); err == nil {
 		serviceFound = true
@@ -111,16 +110,16 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 		if deployment.DeletionTimestamp == nil {
 			if err := r.syncStatus(ctx, deployment, smfDeployment); err != nil {
-				log.Error(err, "Failed to update SMFDeployment status", "SMFDeployment.namespace", namespace, "SMFDeployment.name", smfDeployment.Name)
+				log.Error(err, "Failed to update status")
 				return reconcile.Result{}, err
 			}
 		}
 
 		if currentDeployment.Spec.Template.Annotations[controllers.ConfigMapVersionAnnotation] != configMapVersion {
-			log.Info("ConfigMap has been updated. Rolling Deployment pods.", "SMFDeployment.namespace", namespace, "SMFDeployment.name", smfDeployment.Name)
+			log.Info("ConfigMap has been updated, rolling Deployment pods", "Deployment.namespace", currentDeployment.Namespace, "Deployment.name", currentDeployment.Name)
 			currentDeployment.Spec.Template.Annotations[controllers.ConfigMapVersionAnnotation] = configMapVersion
 			if err := r.Update(ctx, currentDeployment); err != nil {
-				log.Error(err, "Failed to update Deployment", "SMFDeployment.namespace", currentDeployment.Namespace, "SMFDeployment.name", currentDeployment.Name)
+				log.Error(err, "Failed to update Deployment", "Deployment.namespace", currentDeployment.Namespace, "Deployment.name", currentDeployment.Name)
 				return reconcile.Result{}, err
 			}
 			return reconcile.Result{Requeue: true}, nil
@@ -129,37 +128,37 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	if configMap, err := createConfigMap(log, smfDeployment); err == nil {
 		if !configMapFound {
-			log.Info("Creating SMFDeployment configmap", "SMFDeployment.namespace", namespace, "ConfigMap.name", configMap.Name)
+			log.Info("Creating ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
 
 			// Set the controller reference, specifying that SMFDeployment controls the underlying ConfigMap
 			if err := ctrl.SetControllerReference(smfDeployment, configMap, r.Scheme); err != nil {
-				log.Error(err, "Got error while setting Owner reference on configmap.", "SMFDeployment.namespace", namespace)
+				log.Error(err, "Got error while setting Owner reference on ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
 			}
 
 			if err := r.Client.Create(ctx, configMap); err != nil {
-				log.Error(err, fmt.Sprintf("Failed to create ConfigMap %s\n", err.Error()))
+				log.Error(err, "Failed to create ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
 				return reconcile.Result{}, err
 			}
 
 			configMapVersion = configMap.ResourceVersion
 		}
 	} else {
-		log.Error(err, fmt.Sprintf("Failed to create ConfigMap %s\n", err.Error()))
+		log.Error(err, "Failed to create ConfigMap")
 		return reconcile.Result{}, err
 	}
 
 	if !serviceFound {
 		service := createService(smfDeployment)
 
-		log.Info("Creating SMFDeployment service", "SMFDeployment.namespace", namespace, "Service.name", service.Name)
+		log.Info("Creating SMFDeployment service", "Service.namespace", service.Namespace, "Service.name", service.Name)
 
 		// Set the controller reference, specifying that SMFDeployment controls the underlying Service
 		if err := ctrl.SetControllerReference(smfDeployment, service, r.Scheme); err != nil {
-			log.Error(err, "Got error while setting Owner reference on SMF Service.", "SMFDeployment.namespace", namespace)
+			log.Error(err, "Got error while setting Owner reference on SMF Service", "Service.namespace", service.Namespace, "Service.name", service.Name)
 		}
 
 		if err := r.Client.Create(ctx, service); err != nil {
-			log.Error(err, fmt.Sprintf("Failed to create Service %s\n", err.Error()))
+			log.Error(err, "Failed to create Service", "Service.namespace", service.Namespace, "Service.name", service.Name)
 			return reconcile.Result{}, err
 		}
 	}
@@ -170,23 +169,23 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			if ok := controllers.ValidateNetworkAttachmentDefinitions(ctx, r.Client, log, smfDeployment.Kind, deployment); ok {
 				// Set the controller reference, specifying that SMFDeployment controls the underlying Deployment
 				if err := ctrl.SetControllerReference(smfDeployment, deployment, r.Scheme); err != nil {
-					log.Error(err, "Got error while setting Owner reference on Deployment.", "SMFDeployment.namespace", namespace)
+					log.Error(err, "Got error while setting Owner reference on Deployment", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
 				}
 
-				log.Info("Creating SMFDeployment", "SMFDeployment.namespace", namespace, "SMFDeployment.name", smfDeployment.Name)
+				log.Info("Creating Deployment", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
 				if err := r.Client.Create(ctx, deployment); err != nil {
-					log.Error(err, "Failed to create new Deployment", "SMFDeployment.namespace", namespace, "SMFDeployment.name", smfDeployment.Name)
+					log.Error(err, "Failed to create new Deployment", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
 				}
 
 				// TODO(tliron): explain why we need requeueing (do we?)
 				return reconcile.Result{RequeueAfter: time.Duration(30) * time.Second}, nil
 			} else {
-				log.Info("Not all NetworkAttachDefinitions available in current namespace. Requeue in 10 sec.", "SMFDeployment.namespace", namespace)
+				log.Info("Not all NetworkAttachDefinitions available in current namespace, requeuing")
 				return reconcile.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
 			}
 		}
 	} else {
-		log.Error(err, fmt.Sprintf("Failed to create Deployment %s\n", err.Error()))
+		log.Error(err, "Failed to create Deployment")
 		return reconcile.Result{}, err
 	}
 
