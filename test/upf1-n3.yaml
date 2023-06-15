@@ -1,5 +1,4 @@
----
-# Source: free5gc/charts/free5gc-upf/templates/upf-n6-nad.yaml
+# Source: free5gc/charts/free5gc-upf/templates/upf-n3-nad.yaml
 #
 # Software Name : towards5gs-helm
 # SPDX-FileCopyrightText: Copyright (c) 2021 Orange
@@ -12,11 +11,13 @@
 # Author: Abderaouf KHICHANE, Ilhem FAJJARI, Ayoub BOUSSELMI
 # Software description: An open-source project providing Helm charts to deploy 5G components (Core + RAN) on top of Kubernetes
 #
-apiVersion: "k8s.cni.cncf.io/v1"
+apiVersion: k8s.cni.cncf.io/v1
 kind: NetworkAttachmentDefinition
+
 metadata:
-  name: free5gc-upf-1-n6
-  namespace: upf-1
+  namespace: free5gc
+  name: upf-1-n3
+
 spec:
   config: '{
       "cniVersion": "0.3.1",
@@ -28,8 +29,7 @@ spec:
           "mode": "bridge",
           "ipam": {
             "type": "static",
-            "routes": [
-            ] 
+            "routes": []
           }
         }, {
           "capabilities": { "mac": true },

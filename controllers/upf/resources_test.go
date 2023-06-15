@@ -199,7 +199,7 @@ func TestCreateConfigMap(t *testing.T) {
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      upfDeployment.Name + "-upf-configmap",
+			Name:      upfDeployment.Name,
 			Namespace: upfDeployment.Namespace,
 		},
 		Data: map[string]string{

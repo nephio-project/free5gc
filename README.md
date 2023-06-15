@@ -41,6 +41,13 @@ Then deploy to the cluster:
 make deploy REGISTRY=myregistry
 ```
 
+### Deploy Test CRs
+
+```sh
+kubectl apply -f test/
+```
+
+
 ## License
 
 Copyright 2023 The Nephio Authors.

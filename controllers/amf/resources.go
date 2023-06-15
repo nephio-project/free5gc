@@ -142,7 +142,7 @@ func createService(amfDeployment *nephiov1alpha1.AMFDeployment) *apiv1.Service {
 
 	service := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instanceName + "-amf-svc",
+			Name:      instanceName,
 			Namespace: namespace,
 		},
 		Spec: apiv1.ServiceSpec{
@@ -187,7 +187,7 @@ func createConfigMap(log logr.Logger, amfDeployment *nephiov1alpha1.AMFDeploymen
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
-			Name:      instanceName + "-amf-configmap",
+			Name:      instanceName,
 		},
 		Data: map[string]string{
 			"amfcfg.yaml": configuration,
