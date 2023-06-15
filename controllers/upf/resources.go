@@ -193,7 +193,7 @@ func createConfigMap(log logr.Logger, upfDeployment *nephiov1alpha1.UPFDeploymen
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
-			Name:      instanceName + "-upf-configmap",
+			Name:      instanceName,
 		},
 		Data: map[string]string{
 			"upfcfg.yaml": configuration,

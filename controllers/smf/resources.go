@@ -144,7 +144,7 @@ func createService(smfDeployment *nephiov1alpha1.SMFDeployment) *apiv1.Service {
 
 	service := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "smf-nsmf",
+			Name:      instanceName,
 			Namespace: namespace,
 		},
 		Spec: apiv1.ServiceSpec{
@@ -199,7 +199,7 @@ func createConfigMap(log logr.Logger, smfDeployment *nephiov1alpha1.SMFDeploymen
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
-			Name:      instanceName + "-smf-configmap",
+			Name:      instanceName,
 		},
 		Data: map[string]string{
 			"smfcfg.yaml":    configuration,

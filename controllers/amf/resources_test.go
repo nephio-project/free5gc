@@ -171,7 +171,7 @@ func TestCreateConfigMap(t *testing.T) {
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      amfDeployment.Name + "-amf-configmap",
+			Name:      amfDeployment.Name,
 			Namespace: amfDeployment.Namespace,
 		},
 		Data: map[string]string{

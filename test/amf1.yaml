@@ -1,11 +1,12 @@
-# TODO
 apiVersion: workload.nephio.org/v1alpha1
 kind: AMFDeployment
+
 metadata:
-  name: free5gc-amf-1
-  namespace: amf-1
+  namespace: free5gc
+  name: amf-1
   annotations:
     config.kubernetes.io/local-config: "false"
+
 spec:
   capacity:
     maxSubscribers: 1000

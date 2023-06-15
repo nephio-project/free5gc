@@ -179,7 +179,7 @@ func TestCreateConfigMap(t *testing.T) {
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      smfDeployment.Name + "-smf-configmap",
+			Name:      smfDeployment.Name,
 			Namespace: smfDeployment.Namespace,
 		},
 		Data: map[string]string{
