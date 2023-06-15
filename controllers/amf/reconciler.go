@@ -93,7 +93,7 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	serviceFound := false
-	serviceName := amfDeployment.Name + "-amf-svc"
+	serviceName := amfDeployment.Name
 	currentService := new(apiv1.Service)
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, currentService); err == nil {
 		serviceFound = true
