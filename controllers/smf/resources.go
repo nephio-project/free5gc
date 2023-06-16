@@ -107,7 +107,7 @@ func createDeployment(log logr.Logger, configMapVersion string, smfDeployment *n
 										{
 											ConfigMap: &apiv1.ConfigMapProjection{
 												LocalObjectReference: apiv1.LocalObjectReference{
-													Name: instanceName + "-smf-configmap",
+													Name: instanceName,
 												},
 												Items: []apiv1.KeyToPath{
 													{
