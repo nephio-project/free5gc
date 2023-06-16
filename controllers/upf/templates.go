@@ -24,16 +24,15 @@ import (
 )
 
 const configurationTemplateSource = `
-info:
+version: 1.0.3
+description: UPF configuration
 
-  version: 1.0.0
-  description: UPF configuration
+logger:
+  reportCaller: false
+  level: info
+  enable: true
 
-configuration:
-
-  ReportCaller: false
-  debugLevel: info
-  dnn_list:
+dnnList:
 {{- range $netInstance := .N6cfg }}
   {{- range $dnn := $netInstance.DataNetworks }}
   - cidr: {{(index $dnn.Pool 0).Prefix}}
@@ -41,16 +40,18 @@ configuration:
     natifname: {{index $netInstance.Interfaces 0}}
   {{- end }}
 {{- end}}
-  pfcp:
-  - addr: {{ .PFCP_IP }}
 
-  gtpu:
+pfcp:
+  addr: {{ .PFCP_IP }}
+  nodeID: {{ .PFCP_IP }} # External IP or FQDN can be reached
+  retransTimeout: 1s # retransmission timeout
+  maxRetrans: 3 # the max number of retransmission
+
+gtpu:
+  forwarder: gtp5g
+  ifList:
   - addr: {{ .GTPU_IP }}
- 
-  # [optional] gtpu.name
-  # - name: upf.5gc.nctu.me
-  # [optional] gtpu.ifname
-  # - ifname: gtpif
+    type: N3
 `
 
 const wrapperScriptTemplateSource = `#!/bin/sh
