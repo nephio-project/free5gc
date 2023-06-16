@@ -122,7 +122,7 @@ func TestCreateDeployment(t *testing.T) {
 										{
 											ConfigMap: &apiv1.ConfigMapProjection{
 												LocalObjectReference: apiv1.LocalObjectReference{
-													Name: "test-amf-deployment-amf-configmap",
+													Name: "test-amf-deployment",
 												},
 												Items: []apiv1.KeyToPath{
 													{

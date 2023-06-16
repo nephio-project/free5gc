@@ -120,7 +120,7 @@ func TestCreateDeployment(t *testing.T) {
 										{
 											ConfigMap: &apiv1.ConfigMapProjection{
 												LocalObjectReference: apiv1.LocalObjectReference{
-													Name: "test-smf-deployment-smf-configmap",
+													Name: "test-smf-deployment",
 												},
 												Items: []apiv1.KeyToPath{
 													{

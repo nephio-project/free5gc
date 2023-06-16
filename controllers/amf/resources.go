@@ -109,7 +109,7 @@ func createDeployment(log logr.Logger, configMapVersion string, amfDeployment *n
 										{
 											ConfigMap: &apiv1.ConfigMapProjection{
 												LocalObjectReference: apiv1.LocalObjectReference{
-													Name: instanceName + "-amf-configmap",
+													Name: instanceName,
 												},
 												Items: []apiv1.KeyToPath{
 													{

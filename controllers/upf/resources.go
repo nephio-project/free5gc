@@ -111,7 +111,7 @@ func createDeployment(log logr.Logger, configMapVersion string, upfDeployment *n
 										{
 											ConfigMap: &apiv1.ConfigMapProjection{
 												LocalObjectReference: apiv1.LocalObjectReference{
-													Name: instanceName + "-upf-configmap",
+													Name: instanceName,
 												},
 												Items: []apiv1.KeyToPath{
 													{
