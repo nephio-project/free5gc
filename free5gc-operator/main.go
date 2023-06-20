@@ -25,6 +25,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
+	refv1alpha1 "github.com/nephio-project/api/nf_references/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers/amf"
 	"github.com/nephio-project/free5gc/controllers/smf"
 	"github.com/nephio-project/free5gc/controllers/upf"
@@ -45,7 +46,6 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	// utilruntime.Must(nephiov1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -103,6 +103,12 @@ func main() {
 	}
 
 	schemeBuilder.Register(&nephiov1alpha1.AMFDeployment{}, &nephiov1alpha1.AMFDeploymentList{})
+	if err := schemeBuilder.AddToScheme(manager.GetScheme()); err != nil {
+		fail(err, "Not able to register AMFDeployment kind")
+	}
+
+	schemeBuilder = &runscheme.Builder{GroupVersion: refv1alpha1.GroupVersion}
+	schemeBuilder.Register(&refv1alpha1.ConfigRef{}, &refv1alpha1.ConfigRefList{})
 	if err := schemeBuilder.AddToScheme(manager.GetScheme()); err != nil {
 		fail(err, "Not able to register AMFDeployment kind")
 	}

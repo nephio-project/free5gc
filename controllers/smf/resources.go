@@ -17,8 +17,13 @@ limitations under the License.
 package smf
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+
 	"github.com/go-logr/logr"
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
+	refv1alpha1 "github.com/nephio-project/api/nf_references/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -162,7 +167,7 @@ func createService(smfDeployment *nephiov1alpha1.SMFDeployment) *apiv1.Service {
 	return service
 }
 
-func createConfigMap(log logr.Logger, smfDeployment *nephiov1alpha1.SMFDeployment) (*apiv1.ConfigMap, error) {
+func createConfigMap(log logr.Logger, smfDeployment *nephiov1alpha1.SMFDeployment, smfConfigRefs []*refv1alpha1.ConfigRef) (*apiv1.ConfigMap, error) {
 	namespace := smfDeployment.Namespace
 	instanceName := smfDeployment.Name
 
@@ -176,8 +181,34 @@ func createConfigMap(log logr.Logger, smfDeployment *nephiov1alpha1.SMFDeploymen
 		PFCP_IP: n4ip,
 	}
 
-	if networkInstances, ok := getNetworkInstances(smfDeployment.Spec); ok {
-		templateValues.DNN_LIST = networkInstances
+	for _, ref := range smfConfigRefs {
+		// TODO(s3wong): for now, assuming all are UPFDeployment from deployments.nephio.org v1alpha1
+		upfDeployment := &nephiov1alpha1.UPFDeploymentSpec{}
+		upfCfg := UpfPeerConfigTemplate{}
+		if err := json.Unmarshal([]byte(ref.Spec.GVKC.Config), upfDeployment); err != nil {
+			log.Error(err, "Failed to unmarshal json to UPFDeployment")
+			return nil, err
+		}
+		upfCfg.Name = ref.ObjectMeta.Name
+		if upfN4Ip, err := controllers.GetFirstInterfaceConfigIPv4(upfDeployment.Interfaces, "n4"); err != nil {
+			log.Error(err, fmt.Sprintf("Interface N4 not found in UPFDeployment Spec %v\n", upfDeployment))
+			return nil, err
+		} else {
+			upfCfg.N4IP = upfN4Ip
+		}
+		if upfN3Ip, err := controllers.GetFirstInterfaceConfigIPv4(upfDeployment.Interfaces, "n3"); err != nil {
+			log.Error(err, fmt.Sprintf("Interface N3 not found in UPFDeployment Spec %v\n", upfDeployment))
+			return nil, err
+		} else {
+			upfCfg.N3IP = upfN3Ip
+		}
+		if upfN6Cfg, ok := getNetworkInstances(upfDeployment, "n6"); !ok {
+			log.Error(err, fmt.Sprintf("N6 Interface not found in UPFDeployment Spec %v\n", upfDeployment))
+			return nil, errors.New("No N6 intefaces in UPFDeployment Spec.")
+		} else {
+			upfCfg.N6Cfg = upfN6Cfg
+		}
+		templateValues.UPF_LIST = append(templateValues.UPF_LIST, upfCfg)
 	}
 
 	configuration, err := renderConfigurationTemplate(templateValues)
@@ -252,10 +283,21 @@ func createNetworkAttachmentDefinitionNetworks(templateName string, smfDeploymen
 	})
 }
 
-func getNetworkInstances(smfDeploymentSpec nephiov1alpha1.SMFDeploymentSpec) ([]nephiov1alpha1.NetworkInstance, bool) {
-	if len(smfDeploymentSpec.NetworkInstances) == 0 {
-		return smfDeploymentSpec.NetworkInstances, false
+// TODO(s3wong) replica of upf package's getNetworkInstances
+func getNetworkInstances(upfDeploymentSpec *nephiov1alpha1.UPFDeploymentSpec, interfaceName string) ([]nephiov1alpha1.NetworkInstance, bool) {
+	var networkInstances []nephiov1alpha1.NetworkInstance
+
+	for _, networkInstance := range upfDeploymentSpec.NetworkInstances {
+		for _, interface_ := range networkInstance.Interfaces {
+			if interface_ == interfaceName {
+				networkInstances = append(networkInstances, networkInstance)
+			}
+		}
+	}
+
+	if len(networkInstances) == 0 {
+		return networkInstances, false
 	} else {
-		return smfDeploymentSpec.NetworkInstances, true
+		return networkInstances, true
 	}
 }

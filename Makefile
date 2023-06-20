@@ -125,7 +125,7 @@ endif
 
 .PHONY: build
 build: generate fmt vet ## Build operator binary.
-	go build -o bin/free5gc-operator free5gc-operator/
+	go build -o bin/free5gc-operator ./free5gc-operator/
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.

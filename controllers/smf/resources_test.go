@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
+	refv1alpha1 "github.com/nephio-project/api/nf_references/v1alpha1"
 	nephioreqv1alpha1 "github.com/nephio-project/api/nf_requirements/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers"
 	appsv1 "k8s.io/api/apps/v1"
@@ -151,16 +152,60 @@ func TestCreateDeployment(t *testing.T) {
 
 func TestCreateConfigMap(t *testing.T) {
 	log := log.FromContext(context.TODO())
+	var refList []*refv1alpha1.ConfigRef
 	smfDeployment := newSmfDeployment("test-smf-deployment")
-	got, err := createConfigMap(log, smfDeployment)
+	ref := &refv1alpha1.ConfigRef{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "free5gc-upf-1",
+		},
+		Spec: refv1alpha1.ConfigRefSpec{
+			GVKC: refv1alpha1.GVKC{
+				Group:   "workload.nephio.org",
+				Version: "v1alpha1",
+				Kind:    "UPFDeployment",
+				Config:  `{"capacity":{"maxUplinkThroughput":"1G","maxDownlinkThroughput":"5G","maxSessions":1000, "maxSubscribers":1000,"maxNFConnections":2000},"interfaces":[{"name":"n6","ipv4":{"address":"10.10.12.10/24","gateway":"10.10.12.1"}},{"name":"n3","ipv4":{"address":"10.10.10.10/24","gateway":"10.10.10.1"}},{"name":"n4","ipv4":{"address":"10.10.11.10/24","gateway":"10.10.11.1"}}],"networkInstances":[{"name":"vpc-internet","interfaces":["n6"],"dataNetworks":[{"name":"apn-test","pool":[{"prefix":"100.100.0.0/16"}]}]}]}`,
+			},
+		},
+	}
+	refList = append(refList, ref)
+	got, err := createConfigMap(log, smfDeployment, refList)
 	if err != nil {
 		t.Errorf("createConfigMap() returned unexpected error %v", err)
 	}
 
 	n4ip, _ := controllers.GetFirstInterfaceConfigIPv4(smfDeployment.Spec.Interfaces, "n4")
 
+	var expectedN6CfgList []nephiov1alpha1.NetworkInstance
+	dnn := "apn-test"
+	expectedN6Cfg := nephiov1alpha1.NetworkInstance{
+		Name: "vpc-internet",
+		Interfaces: []string{
+			"n6",
+		},
+		DataNetworks: []nephiov1alpha1.DataNetwork{
+			{
+				Name: &dnn,
+				Pool: []nephiov1alpha1.Pool{
+					{
+						Prefix: "100.100.0.0/16",
+					},
+				},
+			},
+		},
+	}
+	expectedN6CfgList = append(expectedN6CfgList, expectedN6Cfg)
+
+	var upfPeerTemplatesList []UpfPeerConfigTemplate
+	upfPeerTemplateValues := UpfPeerConfigTemplate{
+		Name:  "free5gc-upf-1",
+		N3IP:  "10.10.10.10",
+		N4IP:  "10.10.11.10",
+		N6Cfg: expectedN6CfgList,
+	}
+	upfPeerTemplatesList = append(upfPeerTemplatesList, upfPeerTemplateValues)
 	templateValues := configurationTemplateValues{
-		PFCP_IP: n4ip,
+		PFCP_IP:  n4ip,
+		UPF_LIST: upfPeerTemplatesList,
 	}
 
 	configuration, err := renderConfigurationTemplate(templateValues)
