@@ -27,6 +27,6 @@ spec:
             - prefix: "10.200.50.0/24" 
   configRefs:
     - apiVersion: "ref.nephio.org/v1alpha1"
-      kind: ConfigRef
-      name: free5gc-upf-1
+      kind: Config
+      name: smf-config-ref
       namespace: smf-1

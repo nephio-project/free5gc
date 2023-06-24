@@ -22,13 +22,14 @@ import (
 	"testing"
 
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
-	refv1alpha1 "github.com/nephio-project/api/nf_references/v1alpha1"
 	nephioreqv1alpha1 "github.com/nephio-project/api/nf_requirements/v1alpha1"
+	refv1alpha1 "github.com/nephio-project/api/references/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -152,18 +153,79 @@ func TestCreateDeployment(t *testing.T) {
 
 func TestCreateConfigMap(t *testing.T) {
 	log := log.FromContext(context.TODO())
-	var refList []*refv1alpha1.ConfigRef
+	var refList []*refv1alpha1.Config
 	smfDeployment := newSmfDeployment("test-smf-deployment")
-	ref := &refv1alpha1.ConfigRef{
+	/*
+		ref := &refv1alpha1.ConfigRef{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "free5gc-upf-1",
+			},
+			Spec: refv1alpha1.ConfigRefSpec{
+				GVKC: refv1alpha1.GVKC{
+					Group:   "workload.nephio.org",
+					Version: "v1alpha1",
+					Kind:    "UPFDeployment",
+					Config:  `{"capacity":{"maxUplinkThroughput":"1G","maxDownlinkThroughput":"5G","maxSessions":1000, "maxSubscribers":1000,"maxNFConnections":2000},"interfaces":[{"name":"n6","ipv4":{"address":"10.10.12.10/24","gateway":"10.10.12.1"}},{"name":"n3","ipv4":{"address":"10.10.10.10/24","gateway":"10.10.10.1"}},{"name":"n4","ipv4":{"address":"10.10.11.10/24","gateway":"10.10.11.1"}}],"networkInstances":[{"name":"vpc-internet","interfaces":["n6"],"dataNetworks":[{"name":"apn-test","pool":[{"prefix":"100.100.0.0/16"}]}]}]}`,
+				},
+			},
+		}
+		refList = append(refList, ref)
+	*/
+	interfaces := []nephiov1alpha1.InterfaceConfig{}
+	upfN3Int := newSmfNxInterface("n3")
+	upfN4Int := newSmfNxInterface("n4")
+	upfN6Int := newSmfNxInterface("n6")
+	interfaces = append(interfaces, upfN6Int)
+	interfaces = append(interfaces, upfN3Int)
+	interfaces = append(interfaces, upfN4Int)
+	dnnName := "apn-test"
+	upfDeploy := &nephiov1alpha1.UPFDeployment{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "workload.nephio.org/v1alpha1",
+			Kind:       "UPFDeployment",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "free5gc-upf-1",
+			Namespace: "test-smf-deployment",
+		},
+		Spec: nephiov1alpha1.UPFDeploymentSpec{
+			NFDeploymentSpec: nephiov1alpha1.NFDeploymentSpec{
+				ConfigRefs: []apiv1.ObjectReference{},
+				Capacity: &nephioreqv1alpha1.CapacitySpec{
+					MaxUplinkThroughput:   resource.MustParse("1G"),
+					MaxDownlinkThroughput: resource.MustParse("5G"),
+				},
+				Interfaces: interfaces,
+				NetworkInstances: []nephiov1alpha1.NetworkInstance{
+					{
+						Name: "vpc-internet",
+						Interfaces: []string{
+							"n6",
+						},
+						DataNetworks: []nephiov1alpha1.DataNetwork{
+							{
+								Name: &dnnName,
+								Pool: []nephiov1alpha1.Pool{
+									{
+										Prefix: "100.100.0.0/16",
+									},
+								},
+							},
+						},
+						BGP:   nil,
+						Peers: []nephiov1alpha1.PeerConfig{},
+					},
+				},
+			},
+		},
+	}
+	ref := &refv1alpha1.Config{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "free5gc-upf-1",
 		},
-		Spec: refv1alpha1.ConfigRefSpec{
-			GVKC: refv1alpha1.GVKC{
-				Group:   "workload.nephio.org",
-				Version: "v1alpha1",
-				Kind:    "UPFDeployment",
-				Config:  `{"capacity":{"maxUplinkThroughput":"1G","maxDownlinkThroughput":"5G","maxSessions":1000, "maxSubscribers":1000,"maxNFConnections":2000},"interfaces":[{"name":"n6","ipv4":{"address":"10.10.12.10/24","gateway":"10.10.12.1"}},{"name":"n3","ipv4":{"address":"10.10.10.10/24","gateway":"10.10.10.1"}},{"name":"n4","ipv4":{"address":"10.10.11.10/24","gateway":"10.10.11.1"}}],"networkInstances":[{"name":"vpc-internet","interfaces":["n6"],"dataNetworks":[{"name":"apn-test","pool":[{"prefix":"100.100.0.0/16"}]}]}]}`,
+		Spec: refv1alpha1.ConfigSpec{
+			Config: runtime.RawExtension{
+				Object: upfDeploy,
 			},
 		},
 	}
@@ -322,6 +384,28 @@ func newSmfNxInterface(name string) nephiov1alpha1.InterfaceConfig {
 			},
 		}
 		return n4int
+
+	case "n3":
+		gw := "10.10.10.1"
+		n3int := nephiov1alpha1.InterfaceConfig{
+			Name: "n3",
+			IPv4: &nephiov1alpha1.IPv4{
+				Address: "10.10.10.10/24",
+				Gateway: &gw,
+			},
+		}
+		return n3int
+
+	case "n6":
+		gw := "10.10.12.1"
+		n6int := nephiov1alpha1.InterfaceConfig{
+			Name: "n6",
+			IPv4: &nephiov1alpha1.IPv4{
+				Address: "10.10.12.10/24",
+				Gateway: &gw,
+			},
+		}
+		return n6int
 
 	default:
 		return nephiov1alpha1.InterfaceConfig{}

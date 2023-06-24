@@ -21,7 +21,7 @@ import (
 	"time"
 
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
-	refv1alpha1 "github.com/nephio-project/api/nf_references/v1alpha1"
+	refv1alpha1 "github.com/nephio-project/api/references/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -50,11 +50,10 @@ func (r *SMFDeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // Fetch all SMF ConfigRefs
-func (r *SMFDeploymentReconciler) GetAllConfigRefs(ctx context.Context, smfDeployment *nephiov1alpha1.SMFDeployment) ([]*refv1alpha1.ConfigRef, error) {
-	var ret []*refv1alpha1.ConfigRef
-	// TODO(s3wong): for now, assuming all ConfigRefs is of kind refv1alpha1.ConfigRef
+func (r *SMFDeploymentReconciler) GetAllConfigRefs(ctx context.Context, smfDeployment *nephiov1alpha1.SMFDeployment) ([]*refv1alpha1.Config, error) {
+	var ret []*refv1alpha1.Config
 	for _, objRef := range smfDeployment.Spec.ConfigRefs {
-		cfgRef := &refv1alpha1.ConfigRef{}
+		cfgRef := &refv1alpha1.Config{}
 		if err := r.Client.Get(ctx, types.NamespacedName{Name: objRef.Name, Namespace: objRef.Namespace}, cfgRef); err != nil {
 			return ret, err
 		}
@@ -141,7 +140,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
-	var smfConfigRefs []*refv1alpha1.ConfigRef
+	var smfConfigRefs []*refv1alpha1.Config
 	if smfConfigRefs, err = r.GetAllConfigRefs(ctx, smfDeployment); err != nil {
 		log.Info("Not all config references found... rerun reconcile")
 		return reconcile.Result{}, err

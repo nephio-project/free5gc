@@ -1,11 +1,37 @@
 apiVersion: ref.nephio.org/v1alpha1
-kind: ConfigRef
+kind: Config
 metadata:
-  name: free5gc-upf-1
-  namespace: smf-1
+  name: smf-config-ref
+  namespace: free5gc
 spec:
-  gvkc:
-    group: workload.nephio.org
-    version: v1alpha1
+  config:
+    apiVersion: workload.nephio.org/v1alpha1
     kind: UPFDeployment
-    config: '{"capacity":{"maxUplinkThroughput":"1G","maxDownlinkThroughput":"5G","maxSessions":1000,"maxSubscribers":1000,"maxNFConnections":2000},"interfaces":[{"name":"n6","ipv4":{"address":"10.10.12.10/24","gateway":"10.10.12.1"}},{"name":"n3","ipv4":{"address":"10.10.10.10/24","gateway":"10.10.10.1"}},{"name":"n4","ipv4":{"address":"10.10.11.10/24","gateway":"10.10.11.1"}}],"networkInstances":[{"name":"vpc-internet","interfaces":["n6"],"dataNetworks":[{"name":"apn-test","pool":[{"prefix":"100.100.0.0/16"}]}]}]}'
+    metadata:
+      name: free5gc-upf-1
+      namespace: upf-1
+    spec:
+      capacity:
+        maxUplinkThroughput: 1G
+        maxDownlinkThroughput: 5G
+      interfaces:
+        - name: n6
+          ipv4:
+            address: 10.10.12.10/24
+            gateway: 10.10.12.1
+        - name: n3
+          ipv4:
+            address: 10.10.10.10/24
+            gateway: 10.10.10.1
+        - name: n4
+          ipv4:
+            address: 10.10.11.10/24
+            gateway: 10.10.11.1
+      networkInstances:
+        - name: vpc-internet
+          interfaces:
+          - n6
+          dataNetworks:
+          - name: apn-test
+            pool:
+              - prefix: 100.100.0.0/16

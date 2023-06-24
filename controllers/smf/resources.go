@@ -23,7 +23,7 @@ import (
 
 	"github.com/go-logr/logr"
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
-	refv1alpha1 "github.com/nephio-project/api/nf_references/v1alpha1"
+	refv1alpha1 "github.com/nephio-project/api/references/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -167,7 +167,7 @@ func createService(smfDeployment *nephiov1alpha1.SMFDeployment) *apiv1.Service {
 	return service
 }
 
-func createConfigMap(log logr.Logger, smfDeployment *nephiov1alpha1.SMFDeployment, smfConfigRefs []*refv1alpha1.ConfigRef) (*apiv1.ConfigMap, error) {
+func createConfigMap(log logr.Logger, smfDeployment *nephiov1alpha1.SMFDeployment, smfConfigRefs []*refv1alpha1.Config) (*apiv1.ConfigMap, error) {
 	namespace := smfDeployment.Namespace
 	instanceName := smfDeployment.Name
 
@@ -181,34 +181,33 @@ func createConfigMap(log logr.Logger, smfDeployment *nephiov1alpha1.SMFDeploymen
 		PFCP_IP: n4ip,
 	}
 
-	for _, ref := range smfConfigRefs {
-		// TODO(s3wong): for now, assuming all are UPFDeployment from deployments.nephio.org v1alpha1
-		upfDeployment := &nephiov1alpha1.UPFDeploymentSpec{}
-		upfCfg := UpfPeerConfigTemplate{}
-		if err := json.Unmarshal([]byte(ref.Spec.GVKC.Config), upfDeployment); err != nil {
-			log.Error(err, "Failed to unmarshal json to UPFDeployment")
-			return nil, err
+	if upfDeployments, err := extractConfigRefUPFDeployment(smfConfigRefs); err != nil {
+		log.Error(err, "Failed to extract UPFDeployment from ConfigRefs")
+		return nil, err
+	} else {
+		for _, upfDeployment := range upfDeployments {
+			upfCfg := UpfPeerConfigTemplate{}
+			upfCfg.Name = upfDeployment.ObjectMeta.Name
+			if upfN4Ip, err := controllers.GetFirstInterfaceConfigIPv4(upfDeployment.Spec.Interfaces, "n4"); err != nil {
+				log.Error(err, fmt.Sprintf("Interface N4 not found in UPFDeployment Spec %v\n", upfDeployment.Spec))
+				return nil, err
+			} else {
+				upfCfg.N4IP = upfN4Ip
+			}
+			if upfN3Ip, err := controllers.GetFirstInterfaceConfigIPv4(upfDeployment.Spec.Interfaces, "n3"); err != nil {
+				log.Error(err, fmt.Sprintf("Interface N3 not found in UPFDeployment Spec %v\n", upfDeployment.Spec))
+				return nil, err
+			} else {
+				upfCfg.N3IP = upfN3Ip
+			}
+			if upfN6Cfg, ok := getNetworkInstances(&upfDeployment.Spec, "n6"); !ok {
+				log.Error(err, fmt.Sprintf("N6 Interface not found in UPFDeployment Spec %v\n", upfDeployment.Spec))
+				return nil, errors.New("No N6 intefaces in UPFDeployment Spec.")
+			} else {
+				upfCfg.N6Cfg = upfN6Cfg
+			}
+			templateValues.UPF_LIST = append(templateValues.UPF_LIST, upfCfg)
 		}
-		upfCfg.Name = ref.ObjectMeta.Name
-		if upfN4Ip, err := controllers.GetFirstInterfaceConfigIPv4(upfDeployment.Interfaces, "n4"); err != nil {
-			log.Error(err, fmt.Sprintf("Interface N4 not found in UPFDeployment Spec %v\n", upfDeployment))
-			return nil, err
-		} else {
-			upfCfg.N4IP = upfN4Ip
-		}
-		if upfN3Ip, err := controllers.GetFirstInterfaceConfigIPv4(upfDeployment.Interfaces, "n3"); err != nil {
-			log.Error(err, fmt.Sprintf("Interface N3 not found in UPFDeployment Spec %v\n", upfDeployment))
-			return nil, err
-		} else {
-			upfCfg.N3IP = upfN3Ip
-		}
-		if upfN6Cfg, ok := getNetworkInstances(upfDeployment, "n6"); !ok {
-			log.Error(err, fmt.Sprintf("N6 Interface not found in UPFDeployment Spec %v\n", upfDeployment))
-			return nil, errors.New("No N6 intefaces in UPFDeployment Spec.")
-		} else {
-			upfCfg.N6Cfg = upfN6Cfg
-		}
-		templateValues.UPF_LIST = append(templateValues.UPF_LIST, upfCfg)
 	}
 
 	configuration, err := renderConfigurationTemplate(templateValues)
@@ -283,7 +282,6 @@ func createNetworkAttachmentDefinitionNetworks(templateName string, smfDeploymen
 	})
 }
 
-// TODO(s3wong) replica of upf package's getNetworkInstances
 func getNetworkInstances(upfDeploymentSpec *nephiov1alpha1.UPFDeploymentSpec, interfaceName string) ([]nephiov1alpha1.NetworkInstance, bool) {
 	var networkInstances []nephiov1alpha1.NetworkInstance
 
@@ -300,4 +298,30 @@ func getNetworkInstances(upfDeploymentSpec *nephiov1alpha1.UPFDeploymentSpec, in
 	} else {
 		return networkInstances, true
 	}
+}
+
+func extractConfigRefUPFDeployment(refs []*refv1alpha1.Config) ([]nephiov1alpha1.UPFDeployment, error) {
+	var ret []nephiov1alpha1.UPFDeployment
+	for _, ref := range refs {
+		var b []byte
+		if ref.Spec.Config.Object == nil {
+			b = ref.Spec.Config.Raw
+		} else {
+			if ref.Spec.Config.Object.GetObjectKind().GroupVersionKind() == nephiov1alpha1.UPFDeploymentGroupVersionKind {
+				var err error
+				if b, err = json.Marshal(ref.Spec.Config.Object); err != nil {
+					return nil, err
+				}
+			} else {
+				continue
+			}
+		}
+		upfDeployment := &nephiov1alpha1.UPFDeployment{}
+		if err := json.Unmarshal(b, upfDeployment); err != nil {
+			return nil, err
+		} else {
+			ret = append(ret, *upfDeployment)
+		}
+	}
+	return ret, nil
 }
