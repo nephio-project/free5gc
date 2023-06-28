@@ -164,6 +164,10 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				log.Info("Not all NetworkAttachDefinitions available in current namespace, requeuing")
 				return reconcile.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
 			}
+		} else {
+			if err = r.Client.Update(ctx, deployment); err != nil {
+				log.Error(err, "Failed to update Deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
+			}
 		}
 	} else {
 		log.Error(err, "Failed to create Deployment")
