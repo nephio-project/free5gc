@@ -165,8 +165,9 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				return reconcile.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
 			}
 		} else {
-			// TODO refactor
-			r.Client.Update(ctx, deployment)
+			if err = r.Client.Update(ctx, deployment); err != nil {
+				log.Error(err, "Failed to update Deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
+			}
 		}
 	} else {
 		log.Error(err, "Failed to create Deployment")
