@@ -77,8 +77,8 @@ configuration:
     mnc: "93"
   userplaneInformation:
     upNodes:
-{{- range $upf := .UPF_LIST }}
-      gNB1:
+{{- range $index, $upf := .UPF_LIST }}
+      gNB{{ $index }}:
         type: AN
       {{ $upf.Name }}:
         type: UPF
@@ -102,8 +102,8 @@ configuration:
           networkInstance: internet
 {{- end}}
     links:
-{{- range $upf := .UPF_LIST }}
-    - A: gNB1
+{{- range $index, $upf := .UPF_LIST }}
+    - A: gNB{{ $index }}
       B: {{ $upf.Name }}
 {{- end}}
 
