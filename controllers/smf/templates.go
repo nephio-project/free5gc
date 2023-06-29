@@ -38,7 +38,7 @@ configuration:
 
   sbi:
     scheme: http
-    registerIPv4: smf-nsmf
+    registerIPv4: {{ .SVC_NAME }}
     bindingIPv4: 0.0.0.0
     port: 80
     tls:
@@ -173,6 +173,7 @@ type UpfPeerConfigTemplate struct {
 }
 
 type configurationTemplateValues struct {
+	SVC_NAME string
 	PFCP_IP  string
 	UPF_LIST []UpfPeerConfigTemplate
 }

@@ -178,7 +178,8 @@ func createConfigMap(log logr.Logger, smfDeployment *nephiov1alpha1.SMFDeploymen
 	}
 
 	templateValues := configurationTemplateValues{
-		PFCP_IP: n4ip,
+		SVC_NAME: instanceName,
+		PFCP_IP:  n4ip,
 	}
 
 	if upfDeployments, err := extractConfigRefUPFDeployment(smfConfigRefs); err != nil {
