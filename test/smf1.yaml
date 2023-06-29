@@ -9,8 +9,8 @@ metadata:
 
 spec:
   capacity:
-    maxSessions: 1000
-    maxNFConnections: 10
+    maxSessions: 5000
+    maxNFConnections: 100
   interfaces:
     - name: n4
       ipv4:
@@ -29,4 +29,8 @@ spec:
     - apiVersion: "ref.nephio.org/v1alpha1"
       kind: Config
       name: smf-config-ref
-      namespace: smf-1
+      namespace: free5gc
+    - apiVersion: "ref.nephio.org/v1alpha1"
+      kind: Config
+      name: smf-config-ref-2
+      namespace: free5gc

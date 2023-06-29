@@ -38,7 +38,7 @@ configuration:
 
   sbi:
     scheme: http
-    registerIPv4: smf-nsmf
+    registerIPv4: {{ .SVC_NAME }}
     bindingIPv4: 0.0.0.0
     port: 80
     tls:
@@ -77,8 +77,8 @@ configuration:
     mnc: "93"
   userplaneInformation:
     upNodes:
-{{- range $upf := .UPF_LIST }}
-      gNB1:
+{{- range $index, $upf := .UPF_LIST }}
+      gNB{{ $index }}:
         type: AN
       {{ $upf.Name }}:
         type: UPF
@@ -102,8 +102,8 @@ configuration:
           networkInstance: internet
 {{- end}}
     links:
-{{- range $upf := .UPF_LIST }}
-    - A: gNB1
+{{- range $index, $upf := .UPF_LIST }}
+    - A: gNB{{ $index }}
       B: {{ $upf.Name }}
 {{- end}}
 
@@ -173,6 +173,7 @@ type UpfPeerConfigTemplate struct {
 }
 
 type configurationTemplateValues struct {
+	SVC_NAME string
 	PFCP_IP  string
 	UPF_LIST []UpfPeerConfigTemplate
 }
