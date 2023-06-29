@@ -266,6 +266,7 @@ func TestCreateConfigMap(t *testing.T) {
 	}
 	upfPeerTemplatesList = append(upfPeerTemplatesList, upfPeerTemplateValues)
 	templateValues := configurationTemplateValues{
+		SVC_NAME: "test-smf-deployment",
 		PFCP_IP:  n4ip,
 		UPF_LIST: upfPeerTemplatesList,
 	}
