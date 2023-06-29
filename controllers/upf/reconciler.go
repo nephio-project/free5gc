@@ -145,13 +145,13 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	if deployment, err := createDeployment(log, configMapVersion, upfDeployment); err == nil {
+		// Set the controller reference, specifying that UPFDeployment controls the underlying Deployment
+		if err := ctrl.SetControllerReference(upfDeployment, deployment, r.Scheme); err != nil {
+			log.Error(err, "Got error while setting Owner reference on Deployment", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
+		}
 		if !deploymentFound {
 			// Only create Deployment in case all required NADs are present. Otherwise Requeue in 10 sec.
 			if ok := controllers.ValidateNetworkAttachmentDefinitions(ctx, r.Client, log, upfDeployment.Kind, deployment); ok {
-				// Set the controller reference, specifying that UPFDeployment controls the underlying Deployment
-				if err := ctrl.SetControllerReference(upfDeployment, deployment, r.Scheme); err != nil {
-					log.Error(err, "Got error while setting Owner reference on Deployment", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
-				}
 
 				log.Info("Creating Deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
 				if err := r.Client.Create(ctx, deployment); err != nil {
