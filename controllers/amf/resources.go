@@ -171,7 +171,8 @@ func createConfigMap(log logr.Logger, amfDeployment *nephiov1alpha1.AMFDeploymen
 	}
 
 	templateValues := configurationTemplateValues{
-		N2_IP: n2ip,
+		SVC_NAME: instanceName,
+		N2_IP:    n2ip,
 	}
 
 	configuration, err := renderConfigurationTemplate(templateValues)

@@ -34,7 +34,7 @@ configuration:
 
   sbi:
     scheme: http
-    registerIPv4: release-name-free5gc-amf-service # IP used to register to NRF
+    registerIPv4: {{ .SVC_NAME }}
     bindingIPv4: 0.0.0.0  # IP used to bind the service
     port: 80
     tls:
@@ -160,7 +160,8 @@ logger:
 var configurationTemplate = template.Must(template.New("AMFConfiguration").Parse(configurationTemplateSource))
 
 type configurationTemplateValues struct {
-	N2_IP string
+	SVC_NAME string
+	N2_IP    string
 }
 
 func renderConfigurationTemplate(values configurationTemplateValues) (string, error) {
