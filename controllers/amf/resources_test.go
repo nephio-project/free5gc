@@ -157,7 +157,8 @@ func TestCreateConfigMap(t *testing.T) {
 	n2ip, _ := controllers.GetFirstInterfaceConfigIPv4(amfDeployment.Spec.Interfaces, "n2")
 
 	templateValues := configurationTemplateValues{
-		N2_IP: n2ip,
+		SVC_NAME: "test-amf-deployment",
+		N2_IP:    n2ip,
 	}
 
 	configuration, err := renderConfigurationTemplate(templateValues)
