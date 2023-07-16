@@ -1,4 +1,4 @@
-FREE5GC_VERSION ?= 3.2.1
+FREE5GC_VERSION ?= 3.3.0
 IMG_REGISTRY ?= docker.io/nephio
 BASE_IMAGE ?= alpine:3.18.0
 BUILDER_IMAGE ?= golang:1.20.5

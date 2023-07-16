@@ -8,7 +8,7 @@ ARG BASE_IMAGE=alpine
 #
 
 FROM $BUILDER_IMAGE AS builder
-ARG VERSION=3.2.1
+ARG VERSION=3.3.0
 ENV VERSION=$VERSION
 
 # Note: "golang" builder image is based on Debian
@@ -34,7 +34,7 @@ FROM $BASE_IMAGE
 
 WORKDIR /free5gc
 
-RUN mkdir --parents ./config/ ./config/TLS/ ./public
+RUN mkdir --parents ./cert/ ./config/ ./cert/ ./public
 
 # Copy executables
 COPY --from=builder /go/src/free5gc/bin/* ./
@@ -45,4 +45,4 @@ COPY --from=builder /go/src/free5gc/webconsole/public ./public
 
 # Copy certificates and config files
 COPY --from=builder /go/src/free5gc/config/* ./config/
-COPY --from=builder /go/src/free5gc/config/TLS/* ./config/TLS/
+COPY --from=builder /go/src/free5gc/cert/* ./cert/
