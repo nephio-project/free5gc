@@ -14,77 +14,86 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package upf
+package nf
 
 import (
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"log"
 )
 
-func createNfDeploymentStatus(deployment *appsv1.Deployment, upfDeployment *nephiov1alpha1.UPFDeployment) (nephiov1alpha1.NFDeploymentStatus, bool) {
+func createNfDeploymentStatus(deployment *appsv1.Deployment, nfDeployment *nephiov1alpha1.NFDeployment) (nephiov1alpha1.NFDeploymentStatus, bool) {
+	log.Println("*** createNfDeploymentStatus ***")
 	nfDeploymentStatus := nephiov1alpha1.NFDeploymentStatus{
 		ObservedGeneration: int32(deployment.Generation),
-		Conditions:         upfDeployment.Status.Conditions,
+		Conditions:         nfDeployment.Status.Conditions,
 	}
 
-	// Return initial status if there are no status update happened for the UPFdeployment
-	if len(upfDeployment.Status.Conditions) == 0 {
+	// Return initial status if there are no status update happened for the NFdeployment
+	if len(nfDeployment.Status.Conditions) == 0 {
 		nfDeploymentStatus.Conditions = append(nfDeploymentStatus.Conditions, metav1.Condition{
 			Type:               string(nephiov1alpha1.Reconciling),
 			Status:             metav1.ConditionFalse,
 			Reason:             "MinimumReplicasNotAvailable",
-			Message:            "UPFDeployment pod(s) is(are) starting.",
+			Message:            "NFDeployment pod(s) is(are) starting.",
 			LastTransitionTime: metav1.Now(),
 		})
 
+		log.Println("nfDeployment status conditions = 0 !!")
 		return nfDeploymentStatus, true
-	} else if (len(deployment.Status.Conditions) == 0) && (len(upfDeployment.Status.Conditions) > 0) {
+	} else if (len(deployment.Status.Conditions) == 0) && (len(nfDeployment.Status.Conditions) > 0) {
+		log.Println("deployment status conditions = 0 && nfDeployment status conditions > 0 !!")
 		return nfDeploymentStatus, false
 	}
 
 	// Check the last underlying Deployment status and deduce condition from it
 	lastDeploymentCondition := deployment.Status.Conditions[0]
-	lastUpfDeploymentCondition := upfDeployment.Status.Conditions[len(upfDeployment.Status.Conditions)-1]
+	lastNfDeploymentCondition := nfDeployment.Status.Conditions[len(nfDeployment.Status.Conditions)-1]
 
-	// Deployemnt and UPFDeployment have different names for processing state, hence we check if one is processing another is reconciling, then state is equal
-	if (lastDeploymentCondition.Type == appsv1.DeploymentProgressing) && (lastUpfDeploymentCondition.Type == string(nephiov1alpha1.Reconciling)) {
+	// Deployemnt and NFDeployment have different names for processing state, hence we check if one is processing another is reconciling, then state is equal
+	if (lastDeploymentCondition.Type == appsv1.DeploymentProgressing) && (lastNfDeploymentCondition.Type == string(nephiov1alpha1.Reconciling)) {
+		log.Println("returned from here !! - 1")
 		return nfDeploymentStatus, false
 	}
 
 	// if both status types are Available, don't update.
-	if string(lastDeploymentCondition.Type) == string(lastUpfDeploymentCondition.Type) {
+	if string(lastDeploymentCondition.Type) == string(lastNfDeploymentCondition.Type) {
+		log.Println("returned from here !! - 2")
 		return nfDeploymentStatus, false
 	}
 
 	switch lastDeploymentCondition.Type {
 	case appsv1.DeploymentAvailable:
+		log.Println(lastDeploymentCondition.Type + " appsv1.DeploymentAvailable")
 		nfDeploymentStatus.Conditions = append(nfDeploymentStatus.Conditions, metav1.Condition{
 			Type:               string(nephiov1alpha1.Available),
 			Status:             metav1.ConditionTrue,
 			Reason:             "MinimumReplicasAvailable",
-			Message:            "UPFDeployment pods are available.",
+			Message:            "NFDeployment pods are available.",
 			LastTransitionTime: metav1.Now(),
 		})
 
 	case appsv1.DeploymentProgressing:
+		log.Println(lastDeploymentCondition.Type + " appsv1.DeploymentProgressing")
 		nfDeploymentStatus.Conditions = append(nfDeploymentStatus.Conditions, metav1.Condition{
 			Type:               string(nephiov1alpha1.Reconciling),
 			Status:             metav1.ConditionFalse,
 			Reason:             "MinimumReplicasNotAvailable",
-			Message:            "UPFDeployment pod(s) is(are) starting.",
+			Message:            "NFDeployment pod(s) is(are) starting.",
 			LastTransitionTime: metav1.Now(),
 		})
 
 	case appsv1.DeploymentReplicaFailure:
+		log.Println(lastDeploymentCondition.Type + " appsv1.DeploymentReplicaFailure")
 		nfDeploymentStatus.Conditions = append(nfDeploymentStatus.Conditions, metav1.Condition{
 			Type:               string(nephiov1alpha1.Stalled),
 			Status:             metav1.ConditionFalse,
 			Reason:             "MinimumReplicasNotAvailable",
-			Message:            "UPFDeployment pod(s) is(are) failing.",
+			Message:            "NFDeployment pod(s) is(are) failing.",
 			LastTransitionTime: metav1.Now(),
 		})
 	}
-
+	log.Println("returned from here !! - 3")
 	return nfDeploymentStatus, true
 }
