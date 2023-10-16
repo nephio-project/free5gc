@@ -20,11 +20,9 @@ import (
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"log"
 )
 
 func createNfDeploymentStatus(deployment *appsv1.Deployment, nfDeployment *nephiov1alpha1.NFDeployment) (nephiov1alpha1.NFDeploymentStatus, bool) {
-	log.Println("*** createNfDeploymentStatus ***")
 	nfDeploymentStatus := nephiov1alpha1.NFDeploymentStatus{
 		ObservedGeneration: int32(deployment.Generation),
 		Conditions:         nfDeployment.Status.Conditions,
@@ -40,10 +38,8 @@ func createNfDeploymentStatus(deployment *appsv1.Deployment, nfDeployment *nephi
 			LastTransitionTime: metav1.Now(),
 		})
 
-		log.Println("nfDeployment status conditions = 0 !!")
 		return nfDeploymentStatus, true
 	} else if (len(deployment.Status.Conditions) == 0) && (len(nfDeployment.Status.Conditions) > 0) {
-		log.Println("deployment status conditions = 0 && nfDeployment status conditions > 0 !!")
 		return nfDeploymentStatus, false
 	}
 
@@ -53,19 +49,16 @@ func createNfDeploymentStatus(deployment *appsv1.Deployment, nfDeployment *nephi
 
 	// Deployemnt and NFDeployment have different names for processing state, hence we check if one is processing another is reconciling, then state is equal
 	if (lastDeploymentCondition.Type == appsv1.DeploymentProgressing) && (lastNfDeploymentCondition.Type == string(nephiov1alpha1.Reconciling)) {
-		log.Println("returned from here !! - 1")
 		return nfDeploymentStatus, false
 	}
 
 	// if both status types are Available, don't update.
 	if string(lastDeploymentCondition.Type) == string(lastNfDeploymentCondition.Type) {
-		log.Println("returned from here !! - 2")
 		return nfDeploymentStatus, false
 	}
 
 	switch lastDeploymentCondition.Type {
 	case appsv1.DeploymentAvailable:
-		log.Println(lastDeploymentCondition.Type + " appsv1.DeploymentAvailable")
 		nfDeploymentStatus.Conditions = append(nfDeploymentStatus.Conditions, metav1.Condition{
 			Type:               string(nephiov1alpha1.Available),
 			Status:             metav1.ConditionTrue,
@@ -75,7 +68,6 @@ func createNfDeploymentStatus(deployment *appsv1.Deployment, nfDeployment *nephi
 		})
 
 	case appsv1.DeploymentProgressing:
-		log.Println(lastDeploymentCondition.Type + " appsv1.DeploymentProgressing")
 		nfDeploymentStatus.Conditions = append(nfDeploymentStatus.Conditions, metav1.Condition{
 			Type:               string(nephiov1alpha1.Reconciling),
 			Status:             metav1.ConditionFalse,
@@ -85,7 +77,6 @@ func createNfDeploymentStatus(deployment *appsv1.Deployment, nfDeployment *nephi
 		})
 
 	case appsv1.DeploymentReplicaFailure:
-		log.Println(lastDeploymentCondition.Type + " appsv1.DeploymentReplicaFailure")
 		nfDeploymentStatus.Conditions = append(nfDeploymentStatus.Conditions, metav1.Condition{
 			Type:               string(nephiov1alpha1.Stalled),
 			Status:             metav1.ConditionFalse,
@@ -94,6 +85,5 @@ func createNfDeploymentStatus(deployment *appsv1.Deployment, nfDeployment *nephi
 			LastTransitionTime: metav1.Now(),
 		})
 	}
-	log.Println("returned from here !! - 3")
 	return nfDeploymentStatus, true
 }
