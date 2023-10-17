@@ -8,18 +8,6 @@ rules:
   - ""
   resources:
   - configmaps
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
   - services
   verbs:
   - create
@@ -73,7 +61,7 @@ rules:
 - apiGroups:
   - workload.nephio.org
   resources:
-  - amfdeployments
+  - nfdeployments
   verbs:
   - create
   - delete
@@ -85,47 +73,7 @@ rules:
 - apiGroups:
   - workload.nephio.org
   resources:
-  - amfdeployments/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - workload.nephio.org
-  resources:
-  - smfdeployments
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - workload.nephio.org
-  resources:
-  - smfdeployments/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - workload.nephio.org
-  resources:
-  - upfdeployments
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - workload.nephio.org
-  resources:
-  - upfdeployments/status
+  - nfdeployments/status
   verbs:
   - get
   - patch
