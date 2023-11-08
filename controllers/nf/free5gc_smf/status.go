@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package nf
+package free5gc_smf
 
 import (
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"

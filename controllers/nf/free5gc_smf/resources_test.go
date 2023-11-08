@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package nf
+package free5gc_smf
 
 import (
 	"context"
@@ -149,7 +149,8 @@ func TestCreateDeployment(t *testing.T) {
 func TestCreateConfigMap(t *testing.T) {
 	log := log.FromContext(context.TODO())
 	nfDeployment := newNfDeployment("test-nf-deployment")
-	got, err := createConfigMap(log, nfDeployment)
+
+	got, err := createConfigMap(log, nfDeployment, nil)
 	if err != nil {
 		t.Errorf("createConfigMap() returned unexpected error %v", err)
 	}

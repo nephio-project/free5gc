@@ -18,17 +18,20 @@ package nf
 
 import (
 	"context"
-	"fmt"
-	"time"
+	//"fmt"
+	//"time"
 
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
 	//refv1alpha1 "github.com/nephio-project/api/references/v1alpha1"
-	"github.com/nephio-project/free5gc/controllers"
+	//"github.com/nephio-project/free5gc/controllers"
+	amf "github.com/nephio-project/free5gc/controllers/nf/free5gc_amf"
+	smf "github.com/nephio-project/free5gc/controllers/nf/free5gc_smf"
+	upf "github.com/nephio-project/free5gc/controllers/nf/free5gc_upf"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
+	//"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -49,19 +52,6 @@ func (r *NFDeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(new(apiv1.ConfigMap)).
 		Complete(r)
 }
-
-// Fetch all SMF ConfigRefs
-/*func (r *NFDeploymentReconciler) GetAllConfigRefs(ctx context.Context, nfDeployment *nephiov1alpha1.NFDeployment) ([]*refv1alpha1.Config, error) {
-	var ret []*refv1alpha1.Config
-	for _, objRef := range nfDeployment.Spec.ConfigRefs {
-		cfgRef := &refv1alpha1.Config{}
-		if err := r.Client.Get(ctx, types.NamespacedName{Name: objRef.Name, Namespace: objRef.Namespace}, cfgRef); err != nil {
-			return ret, err
-		}
-		ret = append(ret, cfgRef)
-	}
-	return ret, nil
-}*/
 
 // +kubebuilder:rbac:groups=workload.nephio.org,resources=nfdeployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=workload.nephio.org,resources=nfdeployments/status,verbs=get;update;patch
@@ -95,148 +85,30 @@ func (r *NFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return reconcile.Result{}, err
 	}
 
-	namespace := nfDeployment.Namespace
-
-	configMapFound := false
-	configMapName := nfDeployment.Name
-	var configMapVersion string
-	currentConfigMap := new(apiv1.ConfigMap)
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: configMapName, Namespace: namespace}, currentConfigMap); err == nil {
-		configMapFound = true
-		configMapVersion = currentConfigMap.ResourceVersion
+	upfReconciler := &upf.UPFDeploymentReconciler{
+		Client: r.Client,
+		Scheme: r.Scheme,
+	}
+	amfReconciler := &amf.AMFDeploymentReconciler{
+		Client: r.Client,
+		Scheme: r.Scheme,
+	}
+	smfReconciler := &smf.SMFDeploymentReconciler{
+		Client: r.Client,
+		Scheme: r.Scheme,
 	}
 
-	//should disable for upf
-	serviceFound := false
-	serviceName := nfDeployment.Name
-	currentService := new(apiv1.Service)
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, currentService); err == nil {
-		serviceFound = true
-	}
-
-	deploymentFound := false
-	deploymentName := nfDeployment.Name
-	currentDeployment := new(appsv1.Deployment)
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: deploymentName, Namespace: namespace}, currentDeployment); err == nil {
-		deploymentFound = true
-	}
-
-	if deploymentFound {
-		deployment := currentDeployment.DeepCopy()
-
-		// Updating NFDeployment status. On the first sets the first Condition to Reconciling.
-		// On the subsequent runs it gets undelying depoyment Conditions and use the last one to decide if status has to be updated.
-		if deployment.DeletionTimestamp == nil {
-			if err := r.syncStatus(ctx, deployment, nfDeployment); err != nil {
-				log.Error(err, "Failed to update status")
-				return reconcile.Result{}, err
-			}
-		}
-
-		if currentDeployment.Spec.Template.Annotations[controllers.ConfigMapVersionAnnotation] != configMapVersion {
-			log.Info("ConfigMap has been updated, rolling Deployment pods", "Deployment.namespace", currentDeployment.Namespace, "Deployment.name", currentDeployment.Name)
-			currentDeployment.Spec.Template.Annotations[controllers.ConfigMapVersionAnnotation] = configMapVersion
-
-			if err := r.Update(ctx, currentDeployment); err != nil {
-				log.Error(err, "Failed to update Deployment", "Deployment.namespace", currentDeployment.Namespace, "Deployment.name", currentDeployment.Name)
-				return reconcile.Result{}, err
-			}
-
-			return reconcile.Result{Requeue: true}, nil
-		}
-	}
-
-	//SMF config
-	/*var nfConfigRefs []*refv1alpha1.Config
-	if nfConfigRefs, err = r.GetAllConfigRefs(ctx, nfDeployment); err != nil {
-		log.Info("Not all config references found... rerun reconcile")
-		return reconcile.Result{}, err
-	} */
-
-	if configMap, err := createConfigMap(log, nfDeployment); err == nil {
-		if !configMapFound {
-			log.Info("Creating ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
-
-			// Set the controller reference, specifying that NFDeployment controling underlying deployment
-			if err := ctrl.SetControllerReference(nfDeployment, configMap, r.Scheme); err != nil {
-				log.Error(err, "Got error while setting Owner reference on configmap.", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
-			}
-
-			if err := r.Client.Create(ctx, configMap); err != nil {
-				log.Error(err, "Failed to create ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
-				return reconcile.Result{}, err
-			}
-
-			configMapVersion = configMap.ResourceVersion
-		}
-	} else {
-		log.Error(err, "Failed to create ConfigMap")
-		return reconcile.Result{}, err
-	}
-	//should be disabled for upf
-	if !serviceFound {
-		service := createService(nfDeployment)
-
-		log.Info("Creating NFDeployment service", "Service.namespace", service.Namespace, "Service.name", service.Name)
-
-		// Set the controller reference, specifying that NFDeployment controling underlying deployment
-		if err := ctrl.SetControllerReference(nfDeployment, service, r.Scheme); err != nil {
-			log.Error(err, "Got error while setting Owner reference on NF service", "Service.namespace", service.Namespace, "Service.name", service.Name)
-		}
-
-		if err := r.Client.Create(ctx, service); err != nil {
-			log.Error(err, "Failed to create Service", "Service.namespace", service.Namespace, "Service.name", service.Name)
-			return reconcile.Result{}, err
-		}
-	}
-
-	if deployment, err := createDeployment(log, configMapVersion, nfDeployment); err == nil {
-		if !deploymentFound {
-			// Only create Deployment in case all required NADs are present. Otherwise Requeue in 10 sec.
-			if ok := controllers.ValidateNetworkAttachmentDefinitions(ctx, r.Client, log, nfDeployment.Kind, deployment); ok {
-				// Set the controller reference, specifying that NFDeployment controls the underlying Deployment
-				if err := ctrl.SetControllerReference(nfDeployment, deployment, r.Scheme); err != nil {
-					log.Error(err, "Got error while setting Owner reference on deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
-				}
-
-				log.Info("Creating Deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
-				if err := r.Client.Create(ctx, deployment); err != nil {
-					log.Error(err, "Failed to create new Deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
-				}
-
-				// TODO(tliron): explain why we need requeueing (do we?)
-				return reconcile.Result{RequeueAfter: time.Duration(30) * time.Second}, nil
-			} else {
-				log.Info("Not all NetworkAttachDefinitions available in current namespace, requeuing")
-				return reconcile.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
-			}
-		} else {
-			/*
-				if err := ctrl.SetControllerReference(smfDeployment, deployment, r.Scheme); err != nil {
-					log.Error(err, "Got error while setting Owner reference during Deployment update", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
-				}
-				log.Info("Updating Deployment", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
-			*/
-
-			if err = r.Client.Update(ctx, deployment); err != nil {
-				log.Error(err, "Failed to update Deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
-			}
-		}
-	} else {
-		log.Error(err, fmt.Sprintf("Failed to create Deployment %s\n", err.Error()))
-		return reconcile.Result{}, err
-	}
-
-	return reconcile.Result{}, nil
-}
-
-func (r *NFDeploymentReconciler) syncStatus(ctx context.Context, deployment *appsv1.Deployment, nfDeployment *nephiov1alpha1.NFDeployment) error {
-	if nfDeploymentStatus, update := createNfDeploymentStatus(deployment, nfDeployment); update {
-		nfDeployment = nfDeployment.DeepCopy()
-		//nfDeployment.Status.NFDeploymentStatus = nfDeploymentStatus
-		nfDeployment.Status = nfDeploymentStatus
-		return r.Status().Update(ctx, nfDeployment)
-	} else {
-		return nil
+	switch nfDeployment.Spec.Provider {
+	case "upf.free5gc.nephio.org":
+		upfresult, _ := upfReconciler.Reconcile(ctx, req)
+		return upfresult, nil
+	case "smf.free5gc.nephio.org":
+		smfresult, _ := smfReconciler.Reconcile(ctx, req)
+		return smfresult, nil
+	case "amf.free5gc.nephio.org":
+		amfresult, _ := amfReconciler.Reconcile(ctx, req)
+		return amfresult, nil
+	default:
+		return reconcile.Result{}, nil
 	}
 }
