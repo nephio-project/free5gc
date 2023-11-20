@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package free5gc_amf
+package amf
 
 import (
 	"github.com/go-logr/logr"
@@ -74,8 +74,8 @@ func createDeployment(log logr.Logger, configMapVersion string, nfDeployment *ne
 				Spec: apiv1.PodSpec{
 					Containers: []apiv1.Container{
 						{
-							Name:            "nf",
-							Image:           controllers.NFImage,
+							Name:            "amf",
+							Image:           controllers.AMFImage,
 							ImagePullPolicy: apiv1.PullAlways,
 							SecurityContext: securityContext,
 							Ports: []apiv1.ContainerPort{
@@ -86,13 +86,13 @@ func createDeployment(log logr.Logger, configMapVersion string, nfDeployment *ne
 								},
 							},
 
-							Command: []string{"./nf"},
-							Args:    []string{"-c", "../config/nfcfg.yaml"},
+							Command: []string{"./amf"},
+							Args:    []string{"-c", "../config/amfcfg.yaml"},
 
 							VolumeMounts: []apiv1.VolumeMount{
 								{
 									MountPath: "/free5gc/config/",
-									Name:      "nf-volume",
+									Name:      "amf-volume",
 								},
 							},
 							Resources: *resourceRequirements,
@@ -102,7 +102,7 @@ func createDeployment(log logr.Logger, configMapVersion string, nfDeployment *ne
 					RestartPolicy: apiv1.RestartPolicyAlways,
 					Volumes: []apiv1.Volume{
 						{
-							Name: "nf-volume",
+							Name: "amf-volume",
 							VolumeSource: apiv1.VolumeSource{
 								Projected: &apiv1.ProjectedVolumeSource{
 									Sources: []apiv1.VolumeProjection{
@@ -113,8 +113,8 @@ func createDeployment(log logr.Logger, configMapVersion string, nfDeployment *ne
 												},
 												Items: []apiv1.KeyToPath{
 													{
-														Key:  "nfcfg.yaml",
-														Path: "nfcfg.yaml",
+														Key:  "amfcfg.yaml",
+														Path: "amfcfg.yaml",
 													},
 												},
 											},
@@ -191,7 +191,7 @@ func createConfigMap(log logr.Logger, nfDeployment *nephiov1alpha1.NFDeployment)
 			Name:      instanceName,
 		},
 		Data: map[string]string{
-			"nfcfg.yaml": configuration,
+			"amfcfg.yaml": configuration,
 			//      "wrapper.sh":  wrapper.String(),
 		},
 	}

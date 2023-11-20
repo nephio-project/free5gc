@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package free5gc_upf
+package upf
 
 import (
 	"context"
@@ -42,37 +42,6 @@ type UPFDeploymentReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// Sets up the controller with the Manager
-func (r *UPFDeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(new(nephiov1alpha1.NFDeployment)).
-		Owns(new(appsv1.Deployment)).
-		Owns(new(apiv1.ConfigMap)).
-		Complete(r)
-}
-
-// Fetch all SMF ConfigRefs
-/*func (r *NFDeploymentReconciler) GetAllConfigRefs(ctx context.Context, nfDeployment *nephiov1alpha1.NFDeployment) ([]*refv1alpha1.Config, error) {
-	var ret []*refv1alpha1.Config
-	for _, objRef := range nfDeployment.Spec.ConfigRefs {
-		cfgRef := &refv1alpha1.Config{}
-		if err := r.Client.Get(ctx, types.NamespacedName{Name: objRef.Name, Namespace: objRef.Namespace}, cfgRef); err != nil {
-			return ret, err
-		}
-		ret = append(ret, cfgRef)
-	}
-	return ret, nil
-}*/
-
-// +kubebuilder:rbac:groups=workload.nephio.org,resources=nfdeployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=workload.nephio.org,resources=nfdeployments/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get
-// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=configmaps;services,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
-// +kubebuilder:rbac:groups="k8s.cni.cncf.io",resources=network-attachment-definitions,verbs=get;list;watch
-
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
@@ -96,32 +65,6 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return reconcile.Result{}, err
 	}
 
-	/*
-	   upfReconciler := &UPFDeploymentReconciler{
-	           Client: runtime.client,
-	           Schema: runtime.scheme,
-	   }
-	   amfReconciler := &AMFDeploymentReconciler{
-	           Client: r.client,
-	           Schema: r.scheme,
-	   }
-	   smfReconciler := &SMFDeploymentReconciler{
-	           Client: r.client,
-	           Schema: r.scheme,
-	   }
-
-	   switch nfDeployment.Spec.Provider {
-	   case upf.free5gc.nephio.org:
-	           upfresult, _ := upfctrl.Reconcile(context.Context, ctrl.Request)
-	   case smf.free5gc.nephio.org:
-	           smfresult, _ := smfctrl.Reconcile(context.Context, ctrl.Request)
-	   case amf.free5gc.nephio.org:
-	           amfresult, _ := amfctrl.Reconcile(context.Context, ctrl.Request)
-	   default:
-	           return reconcile.Result{}, nil
-	   }
-
-	*/
 	namespace := nfDeployment.Namespace
 
 	configMapFound := false
@@ -131,14 +74,6 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: configMapName, Namespace: namespace}, currentConfigMap); err == nil {
 		configMapFound = true
 		configMapVersion = currentConfigMap.ResourceVersion
-	}
-
-	//should disable for upf
-	serviceFound := false
-	serviceName := nfDeployment.Name
-	currentService := new(apiv1.Service)
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, currentService); err == nil {
-		serviceFound = true
 	}
 
 	deploymentFound := false
@@ -173,13 +108,6 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
-	//SMF config
-	/*var nfConfigRefs []*refv1alpha1.Config
-	if nfConfigRefs, err = r.GetAllConfigRefs(ctx, nfDeployment); err != nil {
-		log.Info("Not all config references found... rerun reconcile")
-		return reconcile.Result{}, err
-	} */
-
 	if configMap, err := createConfigMap(log, nfDeployment); err == nil {
 		if !configMapFound {
 			log.Info("Creating ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
@@ -199,22 +127,6 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	} else {
 		log.Error(err, "Failed to create ConfigMap")
 		return reconcile.Result{}, err
-	}
-	//should be disabled for upf
-	if !serviceFound {
-		service := createService(nfDeployment)
-
-		log.Info("Creating NFDeployment service", "Service.namespace", service.Namespace, "Service.name", service.Name)
-
-		// Set the controller reference, specifying that NFDeployment controling underlying deployment
-		if err := ctrl.SetControllerReference(nfDeployment, service, r.Scheme); err != nil {
-			log.Error(err, "Got error while setting Owner reference on NF service", "Service.namespace", service.Namespace, "Service.name", service.Name)
-		}
-
-		if err := r.Client.Create(ctx, service); err != nil {
-			log.Error(err, "Failed to create Service", "Service.namespace", service.Namespace, "Service.name", service.Name)
-			return reconcile.Result{}, err
-		}
 	}
 
 	if deployment, err := createDeployment(log, configMapVersion, nfDeployment); err == nil {
@@ -238,12 +150,6 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				return reconcile.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
 			}
 		} else {
-			/*
-				if err := ctrl.SetControllerReference(smfDeployment, deployment, r.Scheme); err != nil {
-					log.Error(err, "Got error while setting Owner reference during Deployment update", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
-				}
-				log.Info("Updating Deployment", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
-			*/
 
 			if err = r.Client.Update(ctx, deployment); err != nil {
 				log.Error(err, "Failed to update Deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)

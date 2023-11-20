@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package free5gc_smf
+package amf
 
 import (
 	"context"
@@ -33,7 +33,7 @@ import (
 
 func TestCreateDeployment(t *testing.T) {
 	log := log.FromContext(context.TODO())
-	nfDeployment := newNfDeployment("test-nf-deployment")
+	nfDeployment := newAmfDeployment("test-amf-deployment")
 	got, err := createDeployment(log, "111111", nfDeployment)
 	if err != nil {
 		t.Errorf("createDeployment() returned unexpected error %s", err.Error())
@@ -43,14 +43,14 @@ func TestCreateDeployment(t *testing.T) {
 	var replicas int32 = 1
 	want := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-nf-deployment",
-			Namespace: "test-nf-deployment-ns",
+			Name:      "test-amf-deployment",
+			Namespace: "test-amf-deployment-ns",
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"name": "test-nf-deployment",
+					"name": "test-amf-deployment",
 				},
 			},
 			Template: apiv1.PodTemplateSpec{
@@ -59,7 +59,7 @@ func TestCreateDeployment(t *testing.T) {
 						controllers.ConfigMapVersionAnnotation: "111111",
 						controllers.NetworksAnnotation: `[
  {
-  "name": "test-nf-deployment-n2",
+  "name": "test-amf-deployment-n2",
   "interface": "n2",
   "ips": ["10.10.10.10/24"],
   "gateways": ["10.10.10.1"]
@@ -67,14 +67,14 @@ func TestCreateDeployment(t *testing.T) {
 ]`,
 					},
 					Labels: map[string]string{
-						"name": "test-nf-deployment",
+						"name": "test-amf-deployment",
 					},
 				},
 				Spec: apiv1.PodSpec{
 					Containers: []apiv1.Container{
 						{
-							Name:            "nf",
-							Image:           controllers.NFImage,
+							Name:            "amf",
+							Image:           controllers.AMFImage,
 							ImagePullPolicy: apiv1.PullAlways,
 							SecurityContext: &apiv1.SecurityContext{
 								Capabilities: &apiv1.Capabilities{
@@ -90,13 +90,13 @@ func TestCreateDeployment(t *testing.T) {
 								},
 							},
 
-							Command: []string{"./nf"},
-							Args:    []string{"-c", "../config/nfcfg.yaml"},
+							Command: []string{"./amf"},
+							Args:    []string{"-c", "../config/amfcfg.yaml"},
 
 							VolumeMounts: []apiv1.VolumeMount{
 								{
 									MountPath: "/free5gc/config/",
-									Name:      "nf-volume",
+									Name:      "amf-volume",
 								},
 							},
 							Resources: apiv1.ResourceRequirements{
@@ -115,19 +115,19 @@ func TestCreateDeployment(t *testing.T) {
 					RestartPolicy: apiv1.RestartPolicyAlways,
 					Volumes: []apiv1.Volume{
 						{
-							Name: "nf-volume",
+							Name: "amf-volume",
 							VolumeSource: apiv1.VolumeSource{
 								Projected: &apiv1.ProjectedVolumeSource{
 									Sources: []apiv1.VolumeProjection{
 										{
 											ConfigMap: &apiv1.ConfigMapProjection{
 												LocalObjectReference: apiv1.LocalObjectReference{
-													Name: "test-nf-deployment",
+													Name: "test-amf-deployment",
 												},
 												Items: []apiv1.KeyToPath{
 													{
-														Key:  "nfcfg.yaml",
-														Path: "nfcfg.yaml",
+														Key:  "amfcfg.yaml",
+														Path: "amfcfg.yaml",
 													},
 												},
 											},
@@ -148,9 +148,8 @@ func TestCreateDeployment(t *testing.T) {
 
 func TestCreateConfigMap(t *testing.T) {
 	log := log.FromContext(context.TODO())
-	nfDeployment := newNfDeployment("test-nf-deployment")
-
-	got, err := createConfigMap(log, nfDeployment, nil)
+	nfDeployment := newAmfDeployment("test-amf-deployment")
+	got, err := createConfigMap(log, nfDeployment)
 	if err != nil {
 		t.Errorf("createConfigMap() returned unexpected error %v", err)
 	}
@@ -158,7 +157,7 @@ func TestCreateConfigMap(t *testing.T) {
 	n2ip, _ := controllers.GetFirstInterfaceConfigIPv4(nfDeployment.Spec.Interfaces, "n2")
 
 	templateValues := configurationTemplateValues{
-		SVC_NAME: "test-nf-deployment",
+		SVC_NAME: "test-amf-deployment",
 		N2_IP:    n2ip,
 	}
 
@@ -177,7 +176,7 @@ func TestCreateConfigMap(t *testing.T) {
 			Namespace: nfDeployment.Namespace,
 		},
 		Data: map[string]string{
-			"nfcfg.yaml": configuration,
+			"amfcfg.yaml": configuration,
 			// "wrapper.sh":  wrapper.String(),
 		},
 	}
@@ -187,7 +186,7 @@ func TestCreateConfigMap(t *testing.T) {
 }
 
 func TestCreateResourceRequirements(t *testing.T) {
-	nfDeployment := newNfDeployment("test-nf-deployment")
+	nfDeployment := newAmfDeployment("test-amf-deployment")
 
 	replicas, got, err := createResourceRequirements(nfDeployment.Spec)
 	if err != nil {
@@ -216,7 +215,7 @@ func TestCreateNetworkAttachmentDefinitionName(t *testing.T) {
 		args []string
 		want string
 	}{
-		{[]string{"test-nf-deployment", "n2"}, "test-nf-deployment-n2"},
+		{[]string{"test-amf-deployment", "n2"}, "test-amf-deployment-n2"},
 	}
 	for _, test := range tests {
 		if got := controllers.CreateNetworkAttachmentDefinitionName(test.args[0], test.args[1]); got != test.want {
@@ -226,12 +225,12 @@ func TestCreateNetworkAttachmentDefinitionName(t *testing.T) {
 }
 
 func TestCreateNetworkAttachmentDefinitionNetworks(t *testing.T) {
-	nfDeployment := newNfDeployment("test-nf-deployment")
-	got, _ := createNetworkAttachmentDefinitionNetworks("test-nf-deployment", &nfDeployment.DeepCopy().Spec)
+	nfDeployment := newAmfDeployment("test-amf-deployment")
+	got, _ := createNetworkAttachmentDefinitionNetworks("test-amf-deployment", &nfDeployment.DeepCopy().Spec)
 
 	want := `[
  {
-  "name": "test-nf-deployment-n2",
+  "name": "test-amf-deployment-n2",
   "interface": "n2",
   "ips": ["10.10.10.10/24"],
   "gateways": ["10.10.10.1"]
@@ -243,9 +242,9 @@ func TestCreateNetworkAttachmentDefinitionNetworks(t *testing.T) {
 	}
 }
 
-func newNfDeployment(name string) *nephiov1alpha1.NFDeployment {
+func newAmfDeployment(name string) *nephiov1alpha1.NFDeployment {
 	interfaces := []nephiov1alpha1.InterfaceConfig{}
-	n2interface := newNfNxInterface("n2")
+	n2interface := newAmfNxInterface("n2")
 	interfaces = append(interfaces, n2interface)
 	//dnnName := "apn-test"
 
@@ -268,7 +267,7 @@ func newNfDeployment(name string) *nephiov1alpha1.NFDeployment {
 	}
 }
 
-func newNfNxInterface(name string) nephiov1alpha1.InterfaceConfig {
+func newAmfNxInterface(name string) nephiov1alpha1.InterfaceConfig {
 	switch name {
 	case "n2":
 		gw := "10.10.10.1"

@@ -14,14 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package free5gc_amf
+package upf
 
 import (
 	"reflect"
 	"testing"
 
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
+	nephioreqv1alpha1 "github.com/nephio-project/api/nf_requirements/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -231,5 +233,54 @@ func TestCreateNfDeploymentStatusReplicaFailure(t *testing.T) {
 	}
 	if !b {
 		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, nfDeployment, b, true)
+	}
+}
+
+func newNfDeployment(name string) *nephiov1alpha1.NFDeployment {
+	interfaces := []nephiov1alpha1.InterfaceConfig{}
+	n6int := newNxInterface("n6")
+	n3int := newNxInterface("n3")
+	n4int := newNxInterface("n4")
+	interfaces = append(interfaces, n6int)
+	interfaces = append(interfaces, n3int)
+	interfaces = append(interfaces, n4int)
+	dnnName := "apn-test"
+
+	return &nephiov1alpha1.NFDeployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: name + "-ns",
+		},
+		Spec: nephiov1alpha1.NFDeploymentSpec{
+			ParametersRefs: []nephiov1alpha1.ObjectReference{},
+			Capacity: &nephioreqv1alpha1.CapacitySpec{
+				MaxUplinkThroughput:   resource.MustParse("1G"),
+				MaxDownlinkThroughput: resource.MustParse("5G"),
+				MaxSessions:           1000,
+				MaxSubscribers:        1000,
+				MaxNFConnections:      2000,
+			},
+			Interfaces: interfaces,
+			NetworkInstances: []nephiov1alpha1.NetworkInstance{
+				{
+					Name: "vpc-internet",
+					Interfaces: []string{
+						"n6",
+					},
+					DataNetworks: []nephiov1alpha1.DataNetwork{
+						{
+							Name: &dnnName,
+							Pool: []nephiov1alpha1.Pool{
+								{
+									Prefix: "100.100.0.0/16",
+								},
+							},
+						},
+					},
+					BGP:   nil,
+					Peers: []nephiov1alpha1.PeerConfig{},
+				},
+			},
+		},
 	}
 }

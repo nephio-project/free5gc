@@ -14,31 +14,33 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package free5gc_smf
+package upf
 
 import (
+	"errors"
+
 	"github.com/go-logr/logr"
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
-	refv1alpha1 "github.com/nephio-project/api/references/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	resource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func createDeployment(log logr.Logger, configMapVersion string, nfDeployment *nephiov1alpha1.NFDeployment) (*appsv1.Deployment, error) {
-	namespace := nfDeployment.Namespace
-	instanceName := nfDeployment.Name
-	spec := nfDeployment.Spec
+func createDeployment(log logr.Logger, configMapVersion string, upfDeployment *nephiov1alpha1.NFDeployment) (*appsv1.Deployment, error) {
+	namespace := upfDeployment.Namespace
+	instanceName := upfDeployment.Name
+	spec := upfDeployment.Spec
+
+	var wrapperScriptMode int32 = 0777
 
 	replicas, resourceRequirements, err := createResourceRequirements(spec)
 	if err != nil {
 		return nil, err
 	}
 
-	networkAttachmentDefinitionNetworks, err := createNetworkAttachmentDefinitionNetworks(nfDeployment.Name, &spec)
+	networkAttachmentDefinitionNetworks, err := createNetworkAttachmentDefinitionNetworks(upfDeployment.Name, &spec)
 	if err != nil {
 		return nil, err
 	}
@@ -75,25 +77,24 @@ func createDeployment(log logr.Logger, configMapVersion string, nfDeployment *ne
 				Spec: apiv1.PodSpec{
 					Containers: []apiv1.Container{
 						{
-							Name:            "nf",
-							Image:           controllers.NFImage,
+							Name:            "upf",
+							Image:           controllers.UPFImage,
 							ImagePullPolicy: apiv1.PullAlways,
 							SecurityContext: securityContext,
 							Ports: []apiv1.ContainerPort{
 								{
-									Name:          "n2",
+									Name:          "n4",
 									Protocol:      apiv1.ProtocolUDP,
 									ContainerPort: 8805,
 								},
 							},
-
-							Command: []string{"./nf"},
-							Args:    []string{"-c", "../config/nfcfg.yaml"},
-
+							Command: []string{
+								"/free5gc/config//wrapper.sh",
+							},
 							VolumeMounts: []apiv1.VolumeMount{
 								{
 									MountPath: "/free5gc/config/",
-									Name:      "nf-volume",
+									Name:      "upf-volume",
 								},
 							},
 							Resources: *resourceRequirements,
@@ -103,7 +104,7 @@ func createDeployment(log logr.Logger, configMapVersion string, nfDeployment *ne
 					RestartPolicy: apiv1.RestartPolicyAlways,
 					Volumes: []apiv1.Volume{
 						{
-							Name: "nf-volume",
+							Name: "upf-volume",
 							VolumeSource: apiv1.VolumeSource{
 								Projected: &apiv1.ProjectedVolumeSource{
 									Sources: []apiv1.VolumeProjection{
@@ -114,8 +115,13 @@ func createDeployment(log logr.Logger, configMapVersion string, nfDeployment *ne
 												},
 												Items: []apiv1.KeyToPath{
 													{
-														Key:  "nfcfg.yaml",
-														Path: "nfcfg.yaml",
+														Key:  "upfcfg.yaml",
+														Path: "upfcfg.yaml",
+													},
+													{
+														Key:  "wrapper.sh",
+														Path: "wrapper.sh",
+														Mode: &wrapperScriptMode,
 													},
 												},
 											},
@@ -133,52 +139,50 @@ func createDeployment(log logr.Logger, configMapVersion string, nfDeployment *ne
 	return deployment, nil
 }
 
-func createService(nfDeployment *nephiov1alpha1.NFDeployment) *apiv1.Service {
-	namespace := nfDeployment.Namespace
-	instanceName := nfDeployment.Name
+func createConfigMap(log logr.Logger, upfDeployment *nephiov1alpha1.NFDeployment) (*apiv1.ConfigMap, error) {
+	namespace := upfDeployment.Namespace
+	instanceName := upfDeployment.Name
 
-	labels := map[string]string{
-		"name": instanceName,
-	}
-
-	service := &apiv1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instanceName,
-			Namespace: namespace,
-		},
-		Spec: apiv1.ServiceSpec{
-			Selector: labels,
-			Ports: []apiv1.ServicePort{{
-				Name:       "http",
-				Protocol:   apiv1.ProtocolTCP,
-				Port:       80,
-				TargetPort: intstr.FromInt(80),
-			}},
-			Type: apiv1.ServiceTypeClusterIP,
-		},
-	}
-
-	return service
-}
-
-func createConfigMap(log logr.Logger, nfDeployment *nephiov1alpha1.NFDeployment, smfConfigRefs []*refv1alpha1.Config) (*apiv1.ConfigMap, error) {
-	namespace := nfDeployment.Namespace
-	instanceName := nfDeployment.Name
-
-	n2ip, err := controllers.GetFirstInterfaceConfigIPv4(nfDeployment.Spec.Interfaces, "n2")
+	n4ip, err := controllers.GetFirstInterfaceConfigIPv4(upfDeployment.Spec.Interfaces, "n4")
 	if err != nil {
-		log.Error(err, "Interface N2 not found in NFDeployment Spec")
+		log.Error(err, "Interface N4 not found in UPFDeployment Spec")
+		return nil, err
+	}
+
+	n3ip, err := controllers.GetFirstInterfaceConfigIPv4(upfDeployment.Spec.Interfaces, "n3")
+	if err != nil {
+		log.Error(err, "Interface N3 not found in UPFDeployment Spec")
+		return nil, err
+	}
+
+	n6ip, err := controllers.GetFirstInterfaceConfig(upfDeployment.Spec.Interfaces, "n6")
+	if err != nil {
+		log.Error(err, "Interface N6 not found in UPFDeployment Spec")
 		return nil, err
 	}
 
 	templateValues := configurationTemplateValues{
-		SVC_NAME: instanceName,
-		N2_IP:    n2ip,
+		PFCP_IP: n4ip,
+		GTPU_IP: n3ip,
+		N6gw:    string(*n6ip.IPv4.Gateway),
+	}
+
+	if n6Instances, ok := getNetworkInstances(upfDeployment.Spec, "n6"); ok {
+		templateValues.N6cfg = n6Instances
+	} else {
+		log.Error(err, "No N6 interface in UPFDeployment Spec.")
+		return nil, errors.New("No N6 intefaces in UPFDeployment Spec.")
 	}
 
 	configuration, err := renderConfigurationTemplate(templateValues)
 	if err != nil {
-		log.Error(err, "Could not render NF configuration template.")
+		log.Error(err, "Could not render UPF configuration template.")
+		return nil, err
+	}
+
+	wrapperScript, err := renderWrapperScriptTemplate(templateValues)
+	if err != nil {
+		log.Error(err, "Could not render UPF wrapper script template.")
 		return nil, err
 	}
 
@@ -192,36 +196,37 @@ func createConfigMap(log logr.Logger, nfDeployment *nephiov1alpha1.NFDeployment,
 			Name:      instanceName,
 		},
 		Data: map[string]string{
-			"nfcfg.yaml": configuration,
-			//      "wrapper.sh":  wrapper.String(),
+			"upfcfg.yaml": configuration,
+			"wrapper.sh":  wrapperScript,
 		},
 	}
 
 	return configMap, nil
 }
 
-func createResourceRequirements(nfDeploymentSpec nephiov1alpha1.NFDeploymentSpec) (int32, *apiv1.ResourceRequirements, error) {
+func createResourceRequirements(upfDeploymentSpec nephiov1alpha1.NFDeploymentSpec) (int32, *apiv1.ResourceRequirements, error) {
 	// TODO: Requirements should be calculated based on DL, UL
-	// TODO: increase number of recpicas based on NFDeployment.Capacity.MaxSessions
+	// TODO: Increase number of recpicas based on NFDeployment.Capacity.MaxSessions
 
 	var replicas int32 = 1
-	//downlink := resource.MustParse("5G")
-	//uplink := resource.MustParse("1G")
+
+	downlink := resource.MustParse("5G")
+	// uplink := resource.MustParse("1G")
 	var cpuLimit string
 	var cpuRequest string
 	var memoryLimit string
 	var memoryRequest string
 
-	if nfDeploymentSpec.Capacity.MaxSubscribers > 1000 {
-		cpuLimit = "300m"
-		memoryLimit = "256Mi"
-		cpuRequest = "300m"
-		memoryRequest = "256Mi"
+	if upfDeploymentSpec.Capacity.MaxDownlinkThroughput.Value() > downlink.Value() {
+		cpuLimit = "1000m"
+		memoryLimit = "1Gi"
+		cpuRequest = "1000m"
+		memoryRequest = "1Gi"
 	} else {
-		cpuLimit = "150m"
-		memoryLimit = "128Mi"
-		cpuRequest = "150m"
-		memoryRequest = "128Mi"
+		cpuLimit = "500m"
+		memoryLimit = "512Mi"
+		cpuRequest = "500m"
+		memoryRequest = "512Mi"
 	}
 
 	resources := apiv1.ResourceRequirements{
@@ -238,8 +243,29 @@ func createResourceRequirements(nfDeploymentSpec nephiov1alpha1.NFDeploymentSpec
 	return replicas, &resources, nil
 }
 
-func createNetworkAttachmentDefinitionNetworks(templateName string, nfDeploymentSpec *nephiov1alpha1.NFDeploymentSpec) (string, error) {
+func createNetworkAttachmentDefinitionNetworks(templateName string, upfDeploymentSpec *nephiov1alpha1.NFDeploymentSpec) (string, error) {
 	return controllers.CreateNetworkAttachmentDefinitionNetworks(templateName, map[string][]nephiov1alpha1.InterfaceConfig{
-		"n2": controllers.GetInterfaceConfigs(nfDeploymentSpec.Interfaces, "n2"),
+		"n3": controllers.GetInterfaceConfigs(upfDeploymentSpec.Interfaces, "n3"),
+		"n4": controllers.GetInterfaceConfigs(upfDeploymentSpec.Interfaces, "n4"),
+		"n6": controllers.GetInterfaceConfigs(upfDeploymentSpec.Interfaces, "n6"),
+		"n9": controllers.GetInterfaceConfigs(upfDeploymentSpec.Interfaces, "n9"),
 	})
+}
+
+func getNetworkInstances(upfDeploymentSpec nephiov1alpha1.NFDeploymentSpec, interfaceName string) ([]nephiov1alpha1.NetworkInstance, bool) {
+	var networkInstances []nephiov1alpha1.NetworkInstance
+
+	for _, networkInstance := range upfDeploymentSpec.NetworkInstances {
+		for _, interface_ := range networkInstance.Interfaces {
+			if interface_ == interfaceName {
+				networkInstances = append(networkInstances, networkInstance)
+			}
+		}
+	}
+
+	if len(networkInstances) == 0 {
+		return networkInstances, false
+	} else {
+		return networkInstances, true
+	}
 }

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package free5gc_upf
+package amf
 
 import (
 	"reflect"
@@ -26,7 +26,7 @@ import (
 )
 
 func TestCreateNfDeploymentStatusFirst(t *testing.T) {
-	nfDeployment := newNfDeployment("test-nf-deployment")
+	nfDeployment := newAmfDeployment("test-amf-deployment")
 	deployment := new(appsv1.Deployment)
 
 	want := nephiov1alpha1.NFDeploymentStatus{
@@ -56,7 +56,7 @@ func TestCreateNfDeploymentStatusFirst(t *testing.T) {
 }
 
 func TestCreateNfDeploymentStatusDeploymentNotReady(t *testing.T) {
-	nfDeployment := newNfDeployment("test-nf-deployment")
+	nfDeployment := newAmfDeployment("test-amf-deployment")
 	deployment := new(appsv1.Deployment)
 
 	var condition metav1.Condition
@@ -80,7 +80,7 @@ func TestCreateNfDeploymentStatusDeploymentNotReady(t *testing.T) {
 }
 
 func TestCreateNfDeploymentStatusProcessing(t *testing.T) {
-	nfDeployment := newNfDeployment("test-nf-deployment")
+	nfDeployment := newAmfDeployment("test-amf-deployment")
 	deployment := new(appsv1.Deployment)
 
 	var condition metav1.Condition
@@ -103,7 +103,7 @@ func TestCreateNfDeploymentStatusProcessing(t *testing.T) {
 }
 
 func TestCreateNfDeploymentStatusAvailable(t *testing.T) {
-	nfDeployment := newNfDeployment("test-nf-deployment")
+	nfDeployment := newAmfDeployment("test-amf-deployment")
 	deployment := new(appsv1.Deployment)
 
 	var condition metav1.Condition
@@ -126,7 +126,7 @@ func TestCreateNfDeploymentStatusAvailable(t *testing.T) {
 }
 
 func TestCreateNfDeploymentStatusDeploymentAvailable(t *testing.T) {
-	nfDeployment := newNfDeployment("test-nf-deployment")
+	nfDeployment := newAmfDeployment("test-amf-deployment")
 	deployment := new(appsv1.Deployment)
 
 	var condition metav1.Condition
@@ -163,7 +163,7 @@ func TestCreateNfDeploymentStatusDeploymentAvailable(t *testing.T) {
 }
 
 func TestCreateNfDeploymentStatusDeploymentProcessing(t *testing.T) {
-	nfDeployment := newNfDeployment("test-nf-deployment")
+	nfDeployment := newAmfDeployment("test-amf-deployment")
 	deployment := new(appsv1.Deployment)
 
 	var condition metav1.Condition
@@ -199,7 +199,7 @@ func TestCreateNfDeploymentStatusDeploymentProcessing(t *testing.T) {
 }
 
 func TestCreateNfDeploymentStatusReplicaFailure(t *testing.T) {
-	nfDeployment := newNfDeployment("test-nf-deployment")
+	nfDeployment := newAmfDeployment("test-amf-deployment")
 	deployment := new(appsv1.Deployment)
 
 	var condition metav1.Condition
