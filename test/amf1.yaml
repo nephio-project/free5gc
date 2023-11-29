@@ -1,13 +1,14 @@
 apiVersion: workload.nephio.org/v1alpha1
-kind: AMFDeployment
+kind: NFDeployment
 
 metadata:
   namespace: free5gc
-  name: amf-1
+  name: free5gc-amf-1
   annotations:
     config.kubernetes.io/local-config: "false"
 
 spec:
+  provider: "amf.free5gc.nephio.org"      
   capacity:
     maxSubscribers: 1000
   interfaces:
@@ -20,4 +21,7 @@ spec:
     - name: vpc-internal
       interfaces:
         - n2
-  configRefs:
+  parametersRefs:
+          #    - apiVersion: workload.nephio.org/v1alpha1
+          #    - kind: 
+          #    - name:  

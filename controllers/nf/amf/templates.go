@@ -25,7 +25,7 @@ const configurationTemplateSource = `
 info:
 
   version: 1.0.3
-  description: NF initial local configuration
+  description: AMF initial local configuration
 
 configuration:
 
@@ -38,12 +38,12 @@ configuration:
     bindingIPv4: 0.0.0.0  # IP used to bind the service
     port: 80
     tls:
-      key: config/TLS/nf.key
-      pem: config/TLS/nf.pem
+      key: config/TLS/amf.key
+      pem: config/TLS/amf.pem
 
   nrfUri: http://nrf-nnrf:8000
 
-  nfName: NF
+  amfName: AMF
 
   serviceNameList:
   - namf-comm
@@ -56,7 +56,7 @@ configuration:
   - plmnId:
       mcc: 208
       mnc: 93
-    nfId: cafe00
+    amfId: cafe00
 
   supportTaiList:
   - plmnId:
@@ -157,7 +157,7 @@ logger:
     debugLevel: info
  `
 
-var configurationTemplate = template.Must(template.New("NFConfiguration").Parse(configurationTemplateSource))
+var configurationTemplate = template.Must(template.New("AMFConfiguration").Parse(configurationTemplateSource))
 
 type configurationTemplateValues struct {
 	SVC_NAME string

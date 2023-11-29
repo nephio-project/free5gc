@@ -1,5 +1,5 @@
 apiVersion: workload.nephio.org/v1alpha1
-kind: UPFDeployment
+kind: NFDeployment
 metadata:
   labels:
     app.kubernetes.io/name: upfdeployment

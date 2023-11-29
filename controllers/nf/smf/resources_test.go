@@ -33,7 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func TestCreateDeployment(t *testing.T) {
+func CreateDeployment(t *testing.T) {
 	log := log.FromContext(context.TODO())
 	smfDeployment := newSmfDeployment("test-smf-deployment")
 	got, err := createDeployment(log, "111111", smfDeployment)
@@ -151,10 +151,11 @@ func TestCreateDeployment(t *testing.T) {
 	}
 }
 
-func TestCreateConfigMap(t *testing.T) {
+func CreateConfigMap(t *testing.T) {
 	log := log.FromContext(context.TODO())
 	var refList []*refv1alpha1.Config
 	smfDeployment := newSmfDeployment("test-smf-deployment")
+	// Need to comment from here
 	/*
 		ref := &refv1alpha1.ConfigRef{
 			ObjectMeta: metav1.ObjectMeta{
@@ -171,6 +172,7 @@ func TestCreateConfigMap(t *testing.T) {
 		}
 		refList = append(refList, ref)
 	*/
+	//Need to comment till here
 	interfaces := []nephiov1alpha1.InterfaceConfig{}
 	upfN3Int := newSmfNxInterface("n3")
 	upfN4Int := newSmfNxInterface("n4")

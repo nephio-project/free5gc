@@ -1,13 +1,14 @@
 apiVersion: workload.nephio.org/v1alpha1
-kind: SMFDeployment
+kind: NFDeployment
 
 metadata:
   namespace: free5gc
-  name: smf-1
+  name: free5gc-smf-1
   annotations:
     config.kubernetes.io/local-config: "false"
 
 spec:
+  provider: "smf.free5gc.nephio.org"      
   capacity:
     maxSessions: 5000
     maxNFConnections: 100
@@ -25,12 +26,12 @@ spec:
         - name: internet
           pool:
             - prefix: "10.200.50.0/24" 
-  configRefs:
-    - apiVersion: "ref.nephio.org/v1alpha1"
-      kind: Config
-      name: smf-config-ref
-      namespace: free5gc
-    - apiVersion: "ref.nephio.org/v1alpha1"
-      kind: Config
-      name: smf-config-ref-2
-      namespace: free5gc
+  parametersRefs:
+          #    - apiVersion: "ref.nephio.org/v1alpha1"
+          #      kind: Config
+          #      name: smf-config-ref
+          #      namespace: free5gc
+          #    - apiVersion: "ref.nephio.org/v1alpha1"
+          #      kind: Config
+          #      name: smf-config-ref-2
+          #      namespace: free5gc

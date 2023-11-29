@@ -22,7 +22,7 @@ else
 KUBECTL="microk8s kubectl"
 endif
 
-REGISTRY ?= docker.io/nephio
+REGISTRY ?= docker.io/ronakjoshi
 PROJECT ?= free5gc-operator
 TAG ?= latest
 

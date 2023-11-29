@@ -33,7 +33,7 @@ spec:
             type: object
           spec:
             properties:
-              Provider:
+              provider:
                 description:
                   "Provider defines which provider implement this NFDeployment"
                 type: string
@@ -70,7 +70,7 @@ spec:
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                 type: object
-              ParametersRefs:
+              parametersRefs:
                 description: configRef defines addiitonal configuration references
                   the nf depends upon
                 items:

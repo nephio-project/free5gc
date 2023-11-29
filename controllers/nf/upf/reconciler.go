@@ -18,13 +18,10 @@ package upf
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
-	//refv1alpha1 "github.com/nephio-project/api/references/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers"
-	//"github.com/nephio-project/free5gc/controllers/nf"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -58,7 +55,7 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	err := r.Client.Get(ctx, req.NamespacedName, nfDeployment)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			log.Info("NFDeployment resource not found, ignoring sibecausence object must be deleted")
+			log.Info("NFDeployment resource not found, ignoring because object must be deleted")
 			return reconcile.Result{}, nil
 		}
 		log.Error(err, "Failed to get NFDeployment")
@@ -112,9 +109,9 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		if !configMapFound {
 			log.Info("Creating ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
 
-			// Set the controller reference, specifying that NFDeployment controling underlying deployment
+			// Set the controller reference, specifying that NFDeployment controling underlying ConfigMap
 			if err := ctrl.SetControllerReference(nfDeployment, configMap, r.Scheme); err != nil {
-				log.Error(err, "Got error while setting Owner reference on configmap.", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
+				log.Error(err, "Got error while setting Owner reference on ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
 			}
 
 			if err := r.Client.Create(ctx, configMap); err != nil {
@@ -135,7 +132,7 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			if ok := controllers.ValidateNetworkAttachmentDefinitions(ctx, r.Client, log, nfDeployment.Kind, deployment); ok {
 				// Set the controller reference, specifying that NFDeployment controls the underlying Deployment
 				if err := ctrl.SetControllerReference(nfDeployment, deployment, r.Scheme); err != nil {
-					log.Error(err, "Got error while setting Owner reference on deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
+					log.Error(err, "Got error while setting Owner reference on Deployment", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
 				}
 
 				log.Info("Creating Deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
@@ -156,7 +153,7 @@ func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			}
 		}
 	} else {
-		log.Error(err, fmt.Sprintf("Failed to create Deployment %s\n", err.Error()))
+		log.Error(err, "Failed to create Deployment")
 		return reconcile.Result{}, err
 	}
 

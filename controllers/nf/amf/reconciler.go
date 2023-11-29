@@ -22,9 +22,7 @@ import (
 	"time"
 
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
-	//refv1alpha1 "github.com/nephio-project/api/references/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers"
-	//"github.com/nephio-project/free5gc/controllers/nf"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -36,7 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// Reconciles a UPFDeployment resource
+// Reconciles a AMFDeployment resource
 type AMFDeploymentReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -45,30 +43,30 @@ type AMFDeploymentReconciler struct {
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
-// the NFDeployment object against the actual cluster state, and then
+// the AMFDeployment object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.FromContext(ctx).WithValues("NFDeployment", req.NamespacedName)
+	log := log.FromContext(ctx).WithValues("AMFDeployment", req.NamespacedName)
 
-	nfDeployment := new(nephiov1alpha1.NFDeployment)
-	err := r.Client.Get(ctx, req.NamespacedName, nfDeployment)
+	amfDeployment := new(nephiov1alpha1.NFDeployment)
+	err := r.Client.Get(ctx, req.NamespacedName, amfDeployment)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			log.Info("NFDeployment resource not found, ignoring sibecausence object must be deleted")
+			log.Info("AMFDeployment resource not found, ignoring sibecausence object must be deleted")
 			return reconcile.Result{}, nil
 		}
-		log.Error(err, "Failed to get NFDeployment")
+		log.Error(err, "Failed to get AMFDeployment")
 		return reconcile.Result{}, err
 	}
 
-	namespace := nfDeployment.Namespace
+	namespace := amfDeployment.Namespace
 
 	configMapFound := false
-	configMapName := nfDeployment.Name
+	configMapName := amfDeployment.Name
 	var configMapVersion string
 	currentConfigMap := new(apiv1.ConfigMap)
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: configMapName, Namespace: namespace}, currentConfigMap); err == nil {
@@ -77,14 +75,14 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	serviceFound := false
-	serviceName := nfDeployment.Name
+	serviceName := amfDeployment.Name
 	currentService := new(apiv1.Service)
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, currentService); err == nil {
 		serviceFound = true
 	}
 
 	deploymentFound := false
-	deploymentName := nfDeployment.Name
+	deploymentName := amfDeployment.Name
 	currentDeployment := new(appsv1.Deployment)
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: deploymentName, Namespace: namespace}, currentDeployment); err == nil {
 		deploymentFound = true
@@ -93,10 +91,10 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if deploymentFound {
 		deployment := currentDeployment.DeepCopy()
 
-		// Updating NFDeployment status. On the first sets the first Condition to Reconciling.
+		// Updating AMFDeployment status. On the first sets the first Condition to Reconciling.
 		// On the subsequent runs it gets undelying depoyment Conditions and use the last one to decide if status has to be updated.
 		if deployment.DeletionTimestamp == nil {
-			if err := r.syncStatus(ctx, deployment, nfDeployment); err != nil {
+			if err := r.syncStatus(ctx, deployment, amfDeployment); err != nil {
 				log.Error(err, "Failed to update status")
 				return reconcile.Result{}, err
 			}
@@ -115,12 +113,12 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
-	if configMap, err := createConfigMap(log, nfDeployment); err == nil {
+	if configMap, err := createConfigMap(log, amfDeployment); err == nil {
 		if !configMapFound {
 			log.Info("Creating ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
 
-			// Set the controller reference, specifying that NFDeployment controling underlying deployment
-			if err := ctrl.SetControllerReference(nfDeployment, configMap, r.Scheme); err != nil {
+			// Set the controller reference, specifying that AMFDeployment controling underlying deployment
+			if err := ctrl.SetControllerReference(amfDeployment, configMap, r.Scheme); err != nil {
 				log.Error(err, "Got error while setting Owner reference on configmap.", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
 			}
 
@@ -135,14 +133,15 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		log.Error(err, "Failed to create ConfigMap")
 		return reconcile.Result{}, err
 	}
+
 	if !serviceFound {
-		service := createService(nfDeployment)
+		service := createService(amfDeployment)
 
-		log.Info("Creating NFDeployment service", "Service.namespace", service.Namespace, "Service.name", service.Name)
+		log.Info("Creating AMFDeployment service", "Service.namespace", service.Namespace, "Service.name", service.Name)
 
-		// Set the controller reference, specifying that NFDeployment controling underlying deployment
-		if err := ctrl.SetControllerReference(nfDeployment, service, r.Scheme); err != nil {
-			log.Error(err, "Got error while setting Owner reference on NF service", "Service.namespace", service.Namespace, "Service.name", service.Name)
+		// Set the controller reference, specifying that AMFDeployment controling underlying deployment
+		if err := ctrl.SetControllerReference(amfDeployment, service, r.Scheme); err != nil {
+			log.Error(err, "Got error while setting Owner reference on AMF service", "Service.namespace", service.Namespace, "Service.name", service.Name)
 		}
 
 		if err := r.Client.Create(ctx, service); err != nil {
@@ -151,12 +150,12 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
-	if deployment, err := createDeployment(log, configMapVersion, nfDeployment); err == nil {
+	if deployment, err := createDeployment(log, configMapVersion, amfDeployment); err == nil {
 		if !deploymentFound {
 			// Only create Deployment in case all required NADs are present. Otherwise Requeue in 10 sec.
-			if ok := controllers.ValidateNetworkAttachmentDefinitions(ctx, r.Client, log, nfDeployment.Kind, deployment); ok {
-				// Set the controller reference, specifying that NFDeployment controls the underlying Deployment
-				if err := ctrl.SetControllerReference(nfDeployment, deployment, r.Scheme); err != nil {
+			if ok := controllers.ValidateNetworkAttachmentDefinitions(ctx, r.Client, log, amfDeployment.Kind, deployment); ok {
+				// Set the controller reference, specifying that AMFDeployment controls the underlying Deployment
+				if err := ctrl.SetControllerReference(amfDeployment, deployment, r.Scheme); err != nil {
 					log.Error(err, "Got error while setting Owner reference on deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
 				}
 
@@ -171,17 +170,6 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				log.Info("Not all NetworkAttachDefinitions available in current namespace, requeuing")
 				return reconcile.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
 			}
-		} else {
-			/*
-				if err := ctrl.SetControllerReference(smfDeployment, deployment, r.Scheme); err != nil {
-					log.Error(err, "Got error while setting Owner reference during Deployment update", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
-				}
-				log.Info("Updating Deployment", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
-			*/
-
-			if err = r.Client.Update(ctx, deployment); err != nil {
-				log.Error(err, "Failed to update Deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
-			}
 		}
 	} else {
 		log.Error(err, fmt.Sprintf("Failed to create Deployment %s\n", err.Error()))
@@ -191,12 +179,12 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	return reconcile.Result{}, nil
 }
 
-func (r *AMFDeploymentReconciler) syncStatus(ctx context.Context, deployment *appsv1.Deployment, nfDeployment *nephiov1alpha1.NFDeployment) error {
-	if nfDeploymentStatus, update := createNfDeploymentStatus(deployment, nfDeployment); update {
-		nfDeployment = nfDeployment.DeepCopy()
-		//nfDeployment.Status.NFDeploymentStatus = nfDeploymentStatus
-		nfDeployment.Status = nfDeploymentStatus
-		return r.Status().Update(ctx, nfDeployment)
+func (r *AMFDeploymentReconciler) syncStatus(ctx context.Context, deployment *appsv1.Deployment, amfDeployment *nephiov1alpha1.NFDeployment) error {
+	if nfDeploymentStatus, update := createNfDeploymentStatus(deployment, amfDeployment); update {
+		amfDeployment = amfDeployment.DeepCopy()
+		//amfDeployment.Status.NFDeploymentStatus = nfDeploymentStatus
+		amfDeployment.Status = nfDeploymentStatus
+		return r.Status().Update(ctx, amfDeployment)
 	} else {
 		return nil
 	}
