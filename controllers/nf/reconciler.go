@@ -18,12 +18,8 @@ package nf
 
 import (
 	"context"
-	//"fmt"
-	//"time"
 
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
-	//refv1alpha1 "github.com/nephio-project/api/references/v1alpha1"
-	//"github.com/nephio-project/free5gc/controllers"
 	amf "github.com/nephio-project/free5gc/controllers/nf/amf"
 	smf "github.com/nephio-project/free5gc/controllers/nf/smf"
 	upf "github.com/nephio-project/free5gc/controllers/nf/upf"
@@ -31,7 +27,6 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	//"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -78,7 +73,7 @@ func (r *NFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	err := r.Client.Get(ctx, req.NamespacedName, nfDeployment)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			log.Info("NFDeployment resource not found, ignoring sibecausence object must be deleted")
+			log.Info("NFDeployment resource not found, ignoring because object must be deleted")
 			return reconcile.Result{}, nil
 		}
 		log.Error(err, "Failed to get NFDeployment")

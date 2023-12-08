@@ -22,6 +22,3 @@ spec:
       interfaces:
         - n2
   parametersRefs:
-          #    - apiVersion: workload.nephio.org/v1alpha1
-          #    - kind: 
-          #    - name:  

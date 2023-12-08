@@ -33,7 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func CreateDeployment(t *testing.T) {
+func TestCreateDeployment(t *testing.T) {
 	log := log.FromContext(context.TODO())
 	smfDeployment := newSmfDeployment("test-smf-deployment")
 	got, err := createDeployment(log, "111111", smfDeployment)
@@ -151,7 +151,7 @@ func CreateDeployment(t *testing.T) {
 	}
 }
 
-func CreateConfigMap(t *testing.T) {
+func TestCreateConfigMap(t *testing.T) {
 	log := log.FromContext(context.TODO())
 	var refList []*refv1alpha1.Config
 	smfDeployment := newSmfDeployment("test-smf-deployment")

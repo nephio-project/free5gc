@@ -27,11 +27,6 @@ spec:
           pool:
             - prefix: "10.200.50.0/24" 
   parametersRefs:
-          #    - apiVersion: "ref.nephio.org/v1alpha1"
-          #      kind: Config
-          #      name: smf-config-ref
-          #      namespace: free5gc
-          #    - apiVersion: "ref.nephio.org/v1alpha1"
-          #      kind: Config
-          #      name: smf-config-ref-2
-          #      namespace: free5gc
+              - apiVersion: "ref.nephio.org/v1alpha1"
+                kind: Config
+                name: smf-config-ref

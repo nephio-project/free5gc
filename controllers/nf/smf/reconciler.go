@@ -189,13 +189,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				return reconcile.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
 			}
 		} else {
-			/*
 
-			   if err := ctrl.SetControllerReference(smfDeployment, deployment, r.Scheme); err != nil {
-			           log.Error(err, "Got error while setting Owner reference during Deployment update", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
-			   }
-			   log.Info("Updating Deployment", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
-			*/
 			if err = r.Client.Update(ctx, deployment); err != nil {
 				log.Error(err, "Failed to update Deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
 			}

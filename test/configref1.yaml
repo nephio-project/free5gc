@@ -6,7 +6,7 @@ metadata:
 spec:
   config:
     apiVersion: workload.nephio.org/v1alpha1
-    kind: UPFDeployment
+    kind: NFDeployment
     metadata:
       name: free5gc-upf-1
       namespace: upf-1
