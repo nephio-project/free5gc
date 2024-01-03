@@ -42,15 +42,15 @@ type SMFDeploymentReconciler struct {
 }
 
 // Fetch all SMF ConfigRefs
-func (r *SMFDeploymentReconciler) GetAllConfigRefs(ctx context.Context, smfDeployment *nephiov1alpha1.NFDeployment) ([]*refv1alpha1.Config, error) {
+func (r *SMFDeploymentReconciler) GetAllConfigRefs(ctx context.Context, smfDeployment *nephiov1alpha1.NFDeployment, namespace types.NamespacedName) ([]*refv1alpha1.Config, error) {
 	var ret []*refv1alpha1.Config
-	/*for _, objRef := range smfDeployment.Spec.ParametersRefs {
-	        cfgRef := &refv1alpha1.Config{}
-	        if err := r.Client.Get(ctx, types.NamespacedName{Name: objRef.Name, Namespace: objRef.Namespace}, cfgRef); err != nil {
-	                return ret, err
-	        }
-	        ret = append(ret, cfgRef)
-	}*/
+	for _, objRef := range smfDeployment.Spec.ParametersRefs {
+		cfgRef := &refv1alpha1.Config{}
+		if err := r.Client.Get(ctx, types.NamespacedName{Name: *objRef.Name, Namespace: namespace.Namespace}, cfgRef); err != nil {
+			return ret, err
+		}
+		ret = append(ret, cfgRef)
+	}
 	return ret, nil
 }
 
@@ -76,7 +76,6 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		log.Error(err, "Failed to get SMFDeployment")
 		return reconcile.Result{}, err
 	}
-
 	namespace := smfDeployment.Namespace
 
 	configMapFound := false
@@ -94,7 +93,6 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, currentService); err == nil {
 		serviceFound = true
 	}
-
 	deploymentFound := false
 	deploymentName := smfDeployment.Name
 	currentDeployment := new(appsv1.Deployment)
@@ -126,7 +124,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	var smfConfigRefs []*refv1alpha1.Config
-	if smfConfigRefs, err = r.GetAllConfigRefs(ctx, smfDeployment); err != nil {
+	if smfConfigRefs, err = r.GetAllConfigRefs(ctx, smfDeployment, req.NamespacedName); err != nil {
 		log.Info("Not all config references found... rerun reconcile")
 		return reconcile.Result{}, err
 	}
@@ -134,7 +132,6 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if configMap, err := createConfigMap(log, smfDeployment, smfConfigRefs); err == nil {
 		if !configMapFound {
 			log.Info("Creating ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
-
 			// Set the controller reference, specifying that SMFDeployment controls the underlying ConfigMap
 			if err := ctrl.SetControllerReference(smfDeployment, configMap, r.Scheme); err != nil {
 				log.Error(err, "Got error while setting Owner reference on ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
@@ -144,7 +141,6 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				log.Error(err, "Failed to create ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
 				return reconcile.Result{}, err
 			}
-
 			configMapVersion = configMap.ResourceVersion
 		}
 	} else {
