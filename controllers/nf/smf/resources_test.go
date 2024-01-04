@@ -184,7 +184,7 @@ func TestCreateConfigMap(t *testing.T) {
 	upfDeploy := &nephiov1alpha1.NFDeployment{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "workload.nephio.org/v1alpha1",
-			Kind:       "UPFDeployment",
+			Kind:       "NFDeployment",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "free5gc-upf-1",
