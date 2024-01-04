@@ -23,6 +23,7 @@ import (
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
 	refv1alpha1 "github.com/nephio-project/api/references/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers"
+
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -40,36 +41,18 @@ type SMFDeploymentReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// Sets up the controller with the Manager
-func (r *SMFDeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(new(nephiov1alpha1.SMFDeployment)).
-		Owns(new(appsv1.Deployment)).
-		Owns(new(apiv1.ConfigMap)).
-		Complete(r)
-}
-
 // Fetch all SMF ConfigRefs
-func (r *SMFDeploymentReconciler) GetAllConfigRefs(ctx context.Context, smfDeployment *nephiov1alpha1.SMFDeployment) ([]*refv1alpha1.Config, error) {
+func (r *SMFDeploymentReconciler) GetAllConfigRefs(ctx context.Context, smfDeployment *nephiov1alpha1.NFDeployment, namespace types.NamespacedName) ([]*refv1alpha1.Config, error) {
 	var ret []*refv1alpha1.Config
-	for _, objRef := range smfDeployment.Spec.ConfigRefs {
+	for _, objRef := range smfDeployment.Spec.ParametersRefs {
 		cfgRef := &refv1alpha1.Config{}
-		if err := r.Client.Get(ctx, types.NamespacedName{Name: objRef.Name, Namespace: objRef.Namespace}, cfgRef); err != nil {
+		if err := r.Client.Get(ctx, types.NamespacedName{Name: *objRef.Name, Namespace: namespace.Namespace}, cfgRef); err != nil {
 			return ret, err
 		}
 		ret = append(ret, cfgRef)
 	}
 	return ret, nil
 }
-
-// +kubebuilder:rbac:groups=workload.nephio.org,resources=smfdeployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=workload.nephio.org,resources=smfdeployments/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get
-// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=configmaps;services,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
-// +kubebuilder:rbac:groups="k8s.cni.cncf.io",resources=network-attachment-definitions,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -83,7 +66,7 @@ func (r *SMFDeploymentReconciler) GetAllConfigRefs(ctx context.Context, smfDeplo
 func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("SMFDeployment", req.NamespacedName)
 
-	smfDeployment := new(nephiov1alpha1.SMFDeployment)
+	smfDeployment := new(nephiov1alpha1.NFDeployment)
 	err := r.Client.Get(ctx, req.NamespacedName, smfDeployment)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
@@ -93,7 +76,6 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		log.Error(err, "Failed to get SMFDeployment")
 		return reconcile.Result{}, err
 	}
-
 	namespace := smfDeployment.Namespace
 
 	configMapFound := false
@@ -111,7 +93,6 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, currentService); err == nil {
 		serviceFound = true
 	}
-
 	deploymentFound := false
 	deploymentName := smfDeployment.Name
 	currentDeployment := new(appsv1.Deployment)
@@ -132,16 +113,18 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		if currentDeployment.Spec.Template.Annotations[controllers.ConfigMapVersionAnnotation] != configMapVersion {
 			log.Info("ConfigMap has been updated, rolling Deployment pods", "Deployment.namespace", currentDeployment.Namespace, "Deployment.name", currentDeployment.Name)
 			currentDeployment.Spec.Template.Annotations[controllers.ConfigMapVersionAnnotation] = configMapVersion
+
 			if err := r.Update(ctx, currentDeployment); err != nil {
 				log.Error(err, "Failed to update Deployment", "Deployment.namespace", currentDeployment.Namespace, "Deployment.name", currentDeployment.Name)
 				return reconcile.Result{}, err
 			}
+
 			return reconcile.Result{Requeue: true}, nil
 		}
 	}
 
 	var smfConfigRefs []*refv1alpha1.Config
-	if smfConfigRefs, err = r.GetAllConfigRefs(ctx, smfDeployment); err != nil {
+	if smfConfigRefs, err = r.GetAllConfigRefs(ctx, smfDeployment, req.NamespacedName); err != nil {
 		log.Info("Not all config references found... rerun reconcile")
 		return reconcile.Result{}, err
 	}
@@ -149,7 +132,6 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if configMap, err := createConfigMap(log, smfDeployment, smfConfigRefs); err == nil {
 		if !configMapFound {
 			log.Info("Creating ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
-
 			// Set the controller reference, specifying that SMFDeployment controls the underlying ConfigMap
 			if err := ctrl.SetControllerReference(smfDeployment, configMap, r.Scheme); err != nil {
 				log.Error(err, "Got error while setting Owner reference on ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
@@ -159,7 +141,6 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				log.Error(err, "Failed to create ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
 				return reconcile.Result{}, err
 			}
-
 			configMapVersion = configMap.ResourceVersion
 		}
 	} else {
@@ -204,12 +185,6 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				return reconcile.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
 			}
 		} else {
-			/*
-				if err := ctrl.SetControllerReference(smfDeployment, deployment, r.Scheme); err != nil {
-					log.Error(err, "Got error while setting Owner reference during Deployment update", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
-				}
-				log.Info("Updating Deployment", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
-			*/
 
 			if err = r.Client.Update(ctx, deployment); err != nil {
 				log.Error(err, "Failed to update Deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
@@ -223,10 +198,11 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	return reconcile.Result{}, nil
 }
 
-func (r *SMFDeploymentReconciler) syncStatus(ctx context.Context, deployment *appsv1.Deployment, smfDeployment *nephiov1alpha1.SMFDeployment) error {
+func (r *SMFDeploymentReconciler) syncStatus(ctx context.Context, deployment *appsv1.Deployment, smfDeployment *nephiov1alpha1.NFDeployment) error {
 	if nfDeploymentStatus, update := createNfDeploymentStatus(deployment, smfDeployment); update {
 		smfDeployment = smfDeployment.DeepCopy()
-		smfDeployment.Status.NFDeploymentStatus = nfDeploymentStatus
+		//smfDeployment.Status.NFDeploymentStatus = nfDeploymentStatus
+		smfDeployment.Status = nfDeploymentStatus
 		return r.Status().Update(ctx, smfDeployment)
 	} else {
 		return nil

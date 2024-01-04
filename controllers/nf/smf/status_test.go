@@ -67,7 +67,7 @@ func TestCreateNfDeploymentStatusDeploymentNotReady(t *testing.T) {
 	condition.LastTransitionTime = metav1.Now()
 	smfDeployment.Status.Conditions = append(smfDeployment.Status.Conditions, condition)
 
-	want := smfDeployment.Status.NFDeploymentStatus
+	want := smfDeployment.Status
 
 	got, b := createNfDeploymentStatus(deployment, smfDeployment)
 
@@ -90,7 +90,7 @@ func TestCreateNfDeploymentStatusProcessing(t *testing.T) {
 	smfDeployment.Status.Conditions = append(smfDeployment.Status.Conditions, condition)
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
-	want := smfDeployment.Status.NFDeploymentStatus
+	want := smfDeployment.Status
 
 	got, b := createNfDeploymentStatus(deployment, smfDeployment)
 
@@ -113,7 +113,7 @@ func TestCreateNfDeploymentStatusAvailable(t *testing.T) {
 	smfDeployment.Status.Conditions = append(smfDeployment.Status.Conditions, condition)
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
-	want := smfDeployment.Status.NFDeploymentStatus
+	want := smfDeployment.Status
 
 	got, b := createNfDeploymentStatus(deployment, smfDeployment)
 
@@ -140,7 +140,7 @@ func TestCreateNfDeploymentStatusDeploymentAvailable(t *testing.T) {
 	smfDeployment.Status.Conditions = append(smfDeployment.Status.Conditions, condition)
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
-	want := smfDeployment.Status.NFDeploymentStatus
+	want := smfDeployment.Status
 	condition.Type = string(nephiov1alpha1.Available)
 	condition.Status = metav1.ConditionTrue
 	condition.Reason = "MinimumReplicasAvailable"
@@ -176,7 +176,7 @@ func TestCreateNfDeploymentStatusDeploymentProcessing(t *testing.T) {
 	smfDeployment.Status.Conditions = append(smfDeployment.Status.Conditions, condition)
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
-	want := smfDeployment.Status.NFDeploymentStatus
+	want := smfDeployment.Status
 	condition.Type = string(nephiov1alpha1.Reconciling)
 	condition.Status = metav1.ConditionFalse
 	condition.Reason = "MinimumReplicasNotAvailable"
@@ -212,7 +212,7 @@ func TestCreateNfDeploymentStatusReplicaFailure(t *testing.T) {
 	smfDeployment.Status.Conditions = append(smfDeployment.Status.Conditions, condition)
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
-	want := smfDeployment.Status.NFDeploymentStatus
+	want := smfDeployment.Status
 	condition.Type = string(nephiov1alpha1.Stalled)
 	condition.Status = metav1.ConditionFalse
 	condition.Reason = "MinimumReplicasNotAvailable"

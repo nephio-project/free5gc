@@ -22,7 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func createNfDeploymentStatus(deployment *appsv1.Deployment, smfDeployment *nephiov1alpha1.SMFDeployment) (nephiov1alpha1.NFDeploymentStatus, bool) {
+func createNfDeploymentStatus(deployment *appsv1.Deployment, smfDeployment *nephiov1alpha1.NFDeployment) (nephiov1alpha1.NFDeploymentStatus, bool) {
 	nfDeploymentStatus := nephiov1alpha1.NFDeploymentStatus{
 		ObservedGeneration: int32(deployment.Generation),
 		Conditions:         smfDeployment.Status.Conditions,

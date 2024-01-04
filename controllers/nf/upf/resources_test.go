@@ -330,7 +330,7 @@ func TestGetUpfNetworkInstancesNoInstance(t *testing.T) {
 	}
 }
 
-func newUpfDeployment(name string) *nephiov1alpha1.UPFDeployment {
+func newUpfDeployment(name string) *nephiov1alpha1.NFDeployment {
 	interfaces := []nephiov1alpha1.InterfaceConfig{}
 	n6int := newNxInterface("n6")
 	n3int := newNxInterface("n3")
@@ -340,41 +340,39 @@ func newUpfDeployment(name string) *nephiov1alpha1.UPFDeployment {
 	interfaces = append(interfaces, n4int)
 	dnnName := "apn-test"
 
-	return &nephiov1alpha1.UPFDeployment{
+	return &nephiov1alpha1.NFDeployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: name + "-ns",
 		},
-		Spec: nephiov1alpha1.UPFDeploymentSpec{
-			NFDeploymentSpec: nephiov1alpha1.NFDeploymentSpec{
-				ConfigRefs: []apiv1.ObjectReference{},
-				Capacity: &nephioreqv1alpha1.CapacitySpec{
-					MaxUplinkThroughput:   resource.MustParse("1G"),
-					MaxDownlinkThroughput: resource.MustParse("5G"),
-					MaxSessions:           1000,
-					MaxSubscribers:        1000,
-					MaxNFConnections:      2000,
-				},
-				Interfaces: interfaces,
-				NetworkInstances: []nephiov1alpha1.NetworkInstance{
-					{
-						Name: "vpc-internet",
-						Interfaces: []string{
-							"n6",
-						},
-						DataNetworks: []nephiov1alpha1.DataNetwork{
-							{
-								Name: &dnnName,
-								Pool: []nephiov1alpha1.Pool{
-									{
-										Prefix: "100.100.0.0/16",
-									},
+		Spec: nephiov1alpha1.NFDeploymentSpec{
+			ParametersRefs: []nephiov1alpha1.ObjectReference{},
+			Capacity: &nephioreqv1alpha1.CapacitySpec{
+				MaxUplinkThroughput:   resource.MustParse("1G"),
+				MaxDownlinkThroughput: resource.MustParse("5G"),
+				MaxSessions:           1000,
+				MaxSubscribers:        1000,
+				MaxNFConnections:      2000,
+			},
+			Interfaces: interfaces,
+			NetworkInstances: []nephiov1alpha1.NetworkInstance{
+				{
+					Name: "vpc-internet",
+					Interfaces: []string{
+						"n6",
+					},
+					DataNetworks: []nephiov1alpha1.DataNetwork{
+						{
+							Name: &dnnName,
+							Pool: []nephiov1alpha1.Pool{
+								{
+									Prefix: "100.100.0.0/16",
 								},
 							},
 						},
-						BGP:   nil,
-						Peers: []nephiov1alpha1.PeerConfig{},
 					},
+					BGP:   nil,
+					Peers: []nephiov1alpha1.PeerConfig{},
 				},
 			},
 		},

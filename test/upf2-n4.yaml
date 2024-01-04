@@ -16,7 +16,7 @@ kind: NetworkAttachmentDefinition
 
 metadata:
   namespace: free5gc
-  name: upf-2-n4
+  name: free5gc-upf-2-n4
 
 spec:
   config: '{

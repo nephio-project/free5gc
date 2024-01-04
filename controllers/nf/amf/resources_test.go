@@ -33,8 +33,8 @@ import (
 
 func TestCreateDeployment(t *testing.T) {
 	log := log.FromContext(context.TODO())
-	amfDeployment := newAmfDeployment("test-amf-deployment")
-	got, err := createDeployment(log, "111111", amfDeployment)
+	nfDeployment := newAmfDeployment("test-amf-deployment")
+	got, err := createDeployment(log, "111111", nfDeployment)
 	if err != nil {
 		t.Errorf("createDeployment() returned unexpected error %s", err.Error())
 	}
@@ -142,19 +142,19 @@ func TestCreateDeployment(t *testing.T) {
 		},
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("createDeployment(%v) returned %v, want %v", amfDeployment, got, want)
+		t.Errorf("createDeployment(%v) returned %v, want %v", nfDeployment, got, want)
 	}
 }
 
 func TestCreateConfigMap(t *testing.T) {
 	log := log.FromContext(context.TODO())
-	amfDeployment := newAmfDeployment("test-amf-deployment")
-	got, err := createConfigMap(log, amfDeployment)
+	nfDeployment := newAmfDeployment("test-amf-deployment")
+	got, err := createConfigMap(log, nfDeployment)
 	if err != nil {
 		t.Errorf("createConfigMap() returned unexpected error %v", err)
 	}
 
-	n2ip, _ := controllers.GetFirstInterfaceConfigIPv4(amfDeployment.Spec.Interfaces, "n2")
+	n2ip, _ := controllers.GetFirstInterfaceConfigIPv4(nfDeployment.Spec.Interfaces, "n2")
 
 	templateValues := configurationTemplateValues{
 		SVC_NAME: "test-amf-deployment",
@@ -172,8 +172,8 @@ func TestCreateConfigMap(t *testing.T) {
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      amfDeployment.Name,
-			Namespace: amfDeployment.Namespace,
+			Name:      nfDeployment.Name,
+			Namespace: nfDeployment.Namespace,
 		},
 		Data: map[string]string{
 			"amfcfg.yaml": configuration,
@@ -181,14 +181,14 @@ func TestCreateConfigMap(t *testing.T) {
 		},
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("createConfigMap(%v) returned %v, want %v", amfDeployment, got, want)
+		t.Errorf("createConfigMap(%v) returned %v, want %v", nfDeployment, got, want)
 	}
 }
 
 func TestCreateResourceRequirements(t *testing.T) {
-	amfDeployment := newAmfDeployment("test-amf-deployment")
+	nfDeployment := newAmfDeployment("test-amf-deployment")
 
-	replicas, got, err := createResourceRequirements(amfDeployment.Spec)
+	replicas, got, err := createResourceRequirements(nfDeployment.Spec)
 	if err != nil {
 		t.Errorf("createResourceRequirements() returned unexpected error %v", err)
 	}
@@ -206,7 +206,7 @@ func TestCreateResourceRequirements(t *testing.T) {
 		},
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("createResourceRequirements(%v) returned %v, want %v", amfDeployment.Spec, got, want)
+		t.Errorf("createResourceRequirements(%v) returned %v, want %v", nfDeployment.Spec, got, want)
 	}
 }
 
@@ -225,8 +225,8 @@ func TestCreateNetworkAttachmentDefinitionName(t *testing.T) {
 }
 
 func TestCreateNetworkAttachmentDefinitionNetworks(t *testing.T) {
-	amfDeployment := newAmfDeployment("test-amf-deployment")
-	got, _ := createNetworkAttachmentDefinitionNetworks("test-amf-deployment", &amfDeployment.DeepCopy().Spec)
+	nfDeployment := newAmfDeployment("test-amf-deployment")
+	got, _ := createNetworkAttachmentDefinitionNetworks("test-amf-deployment", &nfDeployment.DeepCopy().Spec)
 
 	want := `[
  {
@@ -238,33 +238,31 @@ func TestCreateNetworkAttachmentDefinitionNetworks(t *testing.T) {
 ]`
 
 	if got != want {
-		t.Errorf("createNetworkAttachmentDefinitionNetworks(%v) returned %v, want %v", amfDeployment.Spec, got, want)
+		t.Errorf("createNetworkAttachmentDefinitionNetworks(%v) returned %v, want %v", nfDeployment.Spec, got, want)
 	}
 }
 
-func newAmfDeployment(name string) *nephiov1alpha1.AMFDeployment {
+func newAmfDeployment(name string) *nephiov1alpha1.NFDeployment {
 	interfaces := []nephiov1alpha1.InterfaceConfig{}
 	n2interface := newAmfNxInterface("n2")
 	interfaces = append(interfaces, n2interface)
 	//dnnName := "apn-test"
 
-	return &nephiov1alpha1.AMFDeployment{
+	return &nephiov1alpha1.NFDeployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: name + "-ns",
 		},
-		Spec: nephiov1alpha1.AMFDeploymentSpec{
-			NFDeploymentSpec: nephiov1alpha1.NFDeploymentSpec{
-				ConfigRefs: []apiv1.ObjectReference{},
-				Capacity: &nephioreqv1alpha1.CapacitySpec{
-					MaxUplinkThroughput:   resource.MustParse("1G"),
-					MaxDownlinkThroughput: resource.MustParse("5G"),
-					MaxSessions:           1000,
-					MaxSubscribers:        1000,
-					MaxNFConnections:      2000,
-				},
-				Interfaces: interfaces,
+		Spec: nephiov1alpha1.NFDeploymentSpec{
+			ParametersRefs: []nephiov1alpha1.ObjectReference{},
+			Capacity: &nephioreqv1alpha1.CapacitySpec{
+				MaxUplinkThroughput:   resource.MustParse("1G"),
+				MaxDownlinkThroughput: resource.MustParse("5G"),
+				MaxSessions:           1000,
+				MaxSubscribers:        1000,
+				MaxNFConnections:      2000,
 			},
+			Interfaces: interfaces,
 		},
 	}
 }

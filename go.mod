@@ -4,7 +4,8 @@ go 1.20
 
 require (
 	github.com/go-logr/logr v1.2.4
-	github.com/nephio-project/api v0.0.0-20230622115552-0304af432fd3
+	//github.com/nephio-project/api v0.0.0-20230622115552-0304af432fd3
+        github.com/nephio-project/api v1.0.1-0.20231006162045-9ad2d0db2a8d
 	github.com/onsi/ginkgo/v2 v2.10.0
 	github.com/onsi/gomega v1.27.8
 	k8s.io/api v0.27.2

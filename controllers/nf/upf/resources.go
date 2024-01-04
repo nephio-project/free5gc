@@ -28,7 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func createDeployment(log logr.Logger, configMapVersion string, upfDeployment *nephiov1alpha1.UPFDeployment) (*appsv1.Deployment, error) {
+func createDeployment(log logr.Logger, configMapVersion string, upfDeployment *nephiov1alpha1.NFDeployment) (*appsv1.Deployment, error) {
 	namespace := upfDeployment.Namespace
 	instanceName := upfDeployment.Name
 	spec := upfDeployment.Spec
@@ -139,7 +139,7 @@ func createDeployment(log logr.Logger, configMapVersion string, upfDeployment *n
 	return deployment, nil
 }
 
-func createConfigMap(log logr.Logger, upfDeployment *nephiov1alpha1.UPFDeployment) (*apiv1.ConfigMap, error) {
+func createConfigMap(log logr.Logger, upfDeployment *nephiov1alpha1.NFDeployment) (*apiv1.ConfigMap, error) {
 	namespace := upfDeployment.Namespace
 	instanceName := upfDeployment.Name
 
@@ -204,7 +204,7 @@ func createConfigMap(log logr.Logger, upfDeployment *nephiov1alpha1.UPFDeploymen
 	return configMap, nil
 }
 
-func createResourceRequirements(upfDeploymentSpec nephiov1alpha1.UPFDeploymentSpec) (int32, *apiv1.ResourceRequirements, error) {
+func createResourceRequirements(upfDeploymentSpec nephiov1alpha1.NFDeploymentSpec) (int32, *apiv1.ResourceRequirements, error) {
 	// TODO: Requirements should be calculated based on DL, UL
 	// TODO: Increase number of recpicas based on NFDeployment.Capacity.MaxSessions
 
@@ -243,7 +243,7 @@ func createResourceRequirements(upfDeploymentSpec nephiov1alpha1.UPFDeploymentSp
 	return replicas, &resources, nil
 }
 
-func createNetworkAttachmentDefinitionNetworks(templateName string, upfDeploymentSpec *nephiov1alpha1.UPFDeploymentSpec) (string, error) {
+func createNetworkAttachmentDefinitionNetworks(templateName string, upfDeploymentSpec *nephiov1alpha1.NFDeploymentSpec) (string, error) {
 	return controllers.CreateNetworkAttachmentDefinitionNetworks(templateName, map[string][]nephiov1alpha1.InterfaceConfig{
 		"n3": controllers.GetInterfaceConfigs(upfDeploymentSpec.Interfaces, "n3"),
 		"n4": controllers.GetInterfaceConfigs(upfDeploymentSpec.Interfaces, "n4"),
@@ -252,7 +252,7 @@ func createNetworkAttachmentDefinitionNetworks(templateName string, upfDeploymen
 	})
 }
 
-func getNetworkInstances(upfDeploymentSpec nephiov1alpha1.UPFDeploymentSpec, interfaceName string) ([]nephiov1alpha1.NetworkInstance, bool) {
+func getNetworkInstances(upfDeploymentSpec nephiov1alpha1.NFDeploymentSpec, interfaceName string) ([]nephiov1alpha1.NetworkInstance, bool) {
 	var networkInstances []nephiov1alpha1.NetworkInstance
 
 	for _, networkInstance := range upfDeploymentSpec.NetworkInstances {

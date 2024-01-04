@@ -21,133 +21,135 @@ import (
 	"testing"
 
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
+	//	nephioreqv1alpha1 "github.com/nephio-project/api/nf_requirements/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
+	//	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestCreateNfDeploymentStatusFirst(t *testing.T) {
-	upfDeployment := newUpfDeployment("test-upf-deployment")
+	nfDeployment := newUpfDeployment("test-nf-deployment")
 	deployment := new(appsv1.Deployment)
 
 	want := nephiov1alpha1.NFDeploymentStatus{
 		ObservedGeneration: int32(deployment.Generation),
-		Conditions:         upfDeployment.Status.Conditions,
+		Conditions:         nfDeployment.Status.Conditions,
 	}
 
 	var condition metav1.Condition
 	condition.Type = string(nephiov1alpha1.Reconciling)
 	condition.Status = metav1.ConditionFalse
 	condition.Reason = "MinimumReplicasNotAvailable"
-	condition.Message = "UPFDeployment pod(s) is(are) starting."
-	// condition.LastTransitionTime = metav1.Now()
+	condition.Message = "NFDeployment pod(s) is(are) starting."
+
 	want.Conditions = append(want.Conditions, condition)
 
-	got, b := createNfDeploymentStatus(deployment, upfDeployment)
+	got, b := createNfDeploymentStatus(deployment, nfDeployment)
 
 	gotCondition := got.Conditions[0]
 	gotCondition.LastTransitionTime = metav1.Time{}
 
 	if !reflect.DeepEqual(gotCondition, condition) {
-		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, upfDeployment, got, want)
+		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, nfDeployment, got, want)
 	}
 	if !b {
-		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, upfDeployment, b, true)
+		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, nfDeployment, b, true)
 	}
 }
 
 func TestCreateNfDeploymentStatusDeploymentNotReady(t *testing.T) {
-	upfDeployment := newUpfDeployment("test-upf-deployment")
+	nfDeployment := newUpfDeployment("test-nf-deployment")
 	deployment := new(appsv1.Deployment)
 
 	var condition metav1.Condition
 	condition.Type = string(nephiov1alpha1.Reconciling)
 	condition.Status = metav1.ConditionFalse
 	condition.Reason = "MinimumReplicasNotAvailable"
-	condition.Message = "UPFDeployment pod(s) is(are) starting."
+	condition.Message = "NFDeployment pod(s) is(are) starting."
 	condition.LastTransitionTime = metav1.Now()
-	upfDeployment.Status.Conditions = append(upfDeployment.Status.Conditions, condition)
+	nfDeployment.Status.Conditions = append(nfDeployment.Status.Conditions, condition)
 
-	want := upfDeployment.Status.NFDeploymentStatus
+	want := nfDeployment.Status
 
-	got, b := createNfDeploymentStatus(deployment, upfDeployment)
+	got, b := createNfDeploymentStatus(deployment, nfDeployment)
 
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, upfDeployment, got, want)
+		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, nfDeployment, got, want)
 	}
 	if b {
-		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, upfDeployment, b, false)
+		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, nfDeployment, b, false)
 	}
 }
 
 func TestCreateNfDeploymentStatusProcessing(t *testing.T) {
-	upfDeployment := newUpfDeployment("test-upf-deployment")
+	nfDeployment := newUpfDeployment("test-nf-deployment")
 	deployment := new(appsv1.Deployment)
 
 	var condition metav1.Condition
 	condition.Type = string(nephiov1alpha1.Reconciling)
 	deploymentCondition := &appsv1.DeploymentCondition{}
 	deploymentCondition.Type = appsv1.DeploymentProgressing
-	upfDeployment.Status.Conditions = append(upfDeployment.Status.Conditions, condition)
+	nfDeployment.Status.Conditions = append(nfDeployment.Status.Conditions, condition)
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
-	want := upfDeployment.Status.NFDeploymentStatus
+	want := nfDeployment.Status
 
-	got, b := createNfDeploymentStatus(deployment, upfDeployment)
+	got, b := createNfDeploymentStatus(deployment, nfDeployment)
 
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, upfDeployment, got, want)
+		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, nfDeployment, got, want)
 	}
 	if b {
-		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, upfDeployment, b, false)
+		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, nfDeployment, b, false)
 	}
 }
 
 func TestCreateNfDeploymentStatusAvailable(t *testing.T) {
-	upfDeployment := newUpfDeployment("test-upf-deployment")
+	nfDeployment := newUpfDeployment("test-nf-deployment")
 	deployment := new(appsv1.Deployment)
 
 	var condition metav1.Condition
 	condition.Type = string(nephiov1alpha1.Available)
 	deploymentCondition := &appsv1.DeploymentCondition{}
 	deploymentCondition.Type = appsv1.DeploymentAvailable
-	upfDeployment.Status.Conditions = append(upfDeployment.Status.Conditions, condition)
+	nfDeployment.Status.Conditions = append(nfDeployment.Status.Conditions, condition)
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
-	want := upfDeployment.Status.NFDeploymentStatus
+	want := nfDeployment.Status
 
-	got, b := createNfDeploymentStatus(deployment, upfDeployment)
+	got, b := createNfDeploymentStatus(deployment, nfDeployment)
 
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, upfDeployment, got, want)
+		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, nfDeployment, got, want)
 	}
 	if b {
-		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, upfDeployment, b, false)
+		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, nfDeployment, b, false)
 	}
 }
 
 func TestCreateNfDeploymentStatusDeploymentAvailable(t *testing.T) {
-	upfDeployment := newUpfDeployment("test-upf-deployment")
+	nfDeployment := newUpfDeployment("test-nf-deployment")
 	deployment := new(appsv1.Deployment)
 
 	var condition metav1.Condition
 	condition.Type = string(nephiov1alpha1.Reconciling)
 	condition.Status = metav1.ConditionFalse
 	condition.Reason = "MinimumReplicasNotAvailable"
-	condition.Message = "UPFDeployment pod(s) is(are) starting."
+	condition.Message = "NFDeployment pod(s) is(are) starting."
 	deploymentCondition := &appsv1.DeploymentCondition{}
 	deploymentCondition.Type = appsv1.DeploymentAvailable
 	deploymentCondition.Reason = "MinimumReplicasAvailable"
-	upfDeployment.Status.Conditions = append(upfDeployment.Status.Conditions, condition)
+	nfDeployment.Status.Conditions = append(nfDeployment.Status.Conditions, condition)
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
-	want := upfDeployment.Status.NFDeploymentStatus
+	want := nfDeployment.Status
 	condition.Type = string(nephiov1alpha1.Available)
 	condition.Status = metav1.ConditionTrue
 	condition.Reason = "MinimumReplicasAvailable"
-	condition.Message = "UPFDeployment pods are available."
+	condition.Message = "NFDeployment pods are available."
 	want.Conditions = append(want.Conditions, condition)
 
-	got, b := createNfDeploymentStatus(deployment, upfDeployment)
+	got, b := createNfDeploymentStatus(deployment, nfDeployment)
 
 	gotCondition := got.Conditions[1]
 	gotCondition.LastTransitionTime = metav1.Time{}
@@ -155,35 +157,35 @@ func TestCreateNfDeploymentStatusDeploymentAvailable(t *testing.T) {
 	got.Conditions = append(got.Conditions, gotCondition)
 
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, upfDeployment, got, want)
+		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, nfDeployment, got, want)
 	}
 	if !b {
-		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, upfDeployment, b, true)
+		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, nfDeployment, b, true)
 	}
 }
 
 func TestCreateNfDeploymentStatusDeploymentProcessing(t *testing.T) {
-	upfDeployment := newUpfDeployment("test-upf-deployment")
+	nfDeployment := newUpfDeployment("test-nf-deployment")
 	deployment := new(appsv1.Deployment)
 
 	var condition metav1.Condition
 	condition.Type = string(nephiov1alpha1.Available)
 	condition.Status = metav1.ConditionTrue
 	condition.Reason = "MinimumReplicasAvailable"
-	condition.Message = "UPFDeployment pods are available"
+	condition.Message = "NFDeployment pods are available"
 	deploymentCondition := &appsv1.DeploymentCondition{}
 	deploymentCondition.Type = appsv1.DeploymentProgressing
-	upfDeployment.Status.Conditions = append(upfDeployment.Status.Conditions, condition)
+	nfDeployment.Status.Conditions = append(nfDeployment.Status.Conditions, condition)
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
-	want := upfDeployment.Status.NFDeploymentStatus
+	want := nfDeployment.Status
 	condition.Type = string(nephiov1alpha1.Reconciling)
 	condition.Status = metav1.ConditionFalse
 	condition.Reason = "MinimumReplicasNotAvailable"
-	condition.Message = "UPFDeployment pod(s) is(are) starting."
+	condition.Message = "NFDeployment pod(s) is(are) starting."
 	want.Conditions = append(want.Conditions, condition)
 
-	got, b := createNfDeploymentStatus(deployment, upfDeployment)
+	got, b := createNfDeploymentStatus(deployment, nfDeployment)
 
 	gotCondition := got.Conditions[1]
 	gotCondition.LastTransitionTime = metav1.Time{}
@@ -191,35 +193,35 @@ func TestCreateNfDeploymentStatusDeploymentProcessing(t *testing.T) {
 	got.Conditions = append(got.Conditions, gotCondition)
 
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, upfDeployment, got, want)
+		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, nfDeployment, got, want)
 	}
 	if !b {
-		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, upfDeployment, b, true)
+		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, nfDeployment, b, true)
 	}
 }
 
 func TestCreateNfDeploymentStatusReplicaFailure(t *testing.T) {
-	upfDeployment := newUpfDeployment("test-upf-deployment")
+	nfDeployment := newUpfDeployment("test-nf-deployment")
 	deployment := new(appsv1.Deployment)
 
 	var condition metav1.Condition
 	condition.Type = string(nephiov1alpha1.Available)
 	condition.Status = metav1.ConditionTrue
 	condition.Reason = "MinimumReplicasAvailable"
-	condition.Message = "UPFDeployment pods are available"
+	condition.Message = "NFDeployment pods are available"
 	deploymentCondition := &appsv1.DeploymentCondition{}
 	deploymentCondition.Type = appsv1.DeploymentReplicaFailure
-	upfDeployment.Status.Conditions = append(upfDeployment.Status.Conditions, condition)
+	nfDeployment.Status.Conditions = append(nfDeployment.Status.Conditions, condition)
 	deployment.Status.Conditions = append(deployment.Status.Conditions, *deploymentCondition)
 
-	want := upfDeployment.Status.NFDeploymentStatus
+	want := nfDeployment.Status
 	condition.Type = string(nephiov1alpha1.Stalled)
 	condition.Status = metav1.ConditionFalse
 	condition.Reason = "MinimumReplicasNotAvailable"
-	condition.Message = "UPFDeployment pod(s) is(are) failing."
+	condition.Message = "NFDeployment pod(s) is(are) failing."
 	want.Conditions = append(want.Conditions, condition)
 
-	got, b := createNfDeploymentStatus(deployment, upfDeployment)
+	got, b := createNfDeploymentStatus(deployment, nfDeployment)
 
 	gotCondition := got.Conditions[1]
 	gotCondition.LastTransitionTime = metav1.Time{}
@@ -227,9 +229,9 @@ func TestCreateNfDeploymentStatusReplicaFailure(t *testing.T) {
 	got.Conditions = append(got.Conditions, gotCondition)
 
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, upfDeployment, got, want)
+		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, nfDeployment, got, want)
 	}
 	if !b {
-		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, upfDeployment, b, true)
+		t.Errorf("createNfDeploymentStatus(%v, %v) returned %v, want %v", deployment, nfDeployment, b, true)
 	}
 }

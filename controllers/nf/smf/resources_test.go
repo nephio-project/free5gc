@@ -155,6 +155,7 @@ func TestCreateConfigMap(t *testing.T) {
 	log := log.FromContext(context.TODO())
 	var refList []*refv1alpha1.Config
 	smfDeployment := newSmfDeployment("test-smf-deployment")
+	// Need to comment from here
 	/*
 		ref := &refv1alpha1.ConfigRef{
 			ObjectMeta: metav1.ObjectMeta{
@@ -171,6 +172,7 @@ func TestCreateConfigMap(t *testing.T) {
 		}
 		refList = append(refList, ref)
 	*/
+	//Need to comment till here
 	interfaces := []nephiov1alpha1.InterfaceConfig{}
 	upfN3Int := newSmfNxInterface("n3")
 	upfN4Int := newSmfNxInterface("n4")
@@ -179,42 +181,41 @@ func TestCreateConfigMap(t *testing.T) {
 	interfaces = append(interfaces, upfN3Int)
 	interfaces = append(interfaces, upfN4Int)
 	dnnName := "apn-test"
-	upfDeploy := &nephiov1alpha1.UPFDeployment{
+	upfDeploy := &nephiov1alpha1.NFDeployment{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "workload.nephio.org/v1alpha1",
-			Kind:       "UPFDeployment",
+			Kind:       "NFDeployment",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "free5gc-upf-1",
 			Namespace: "test-smf-deployment",
 		},
-		Spec: nephiov1alpha1.UPFDeploymentSpec{
-			NFDeploymentSpec: nephiov1alpha1.NFDeploymentSpec{
-				ConfigRefs: []apiv1.ObjectReference{},
-				Capacity: &nephioreqv1alpha1.CapacitySpec{
-					MaxUplinkThroughput:   resource.MustParse("1G"),
-					MaxDownlinkThroughput: resource.MustParse("5G"),
-				},
-				Interfaces: interfaces,
-				NetworkInstances: []nephiov1alpha1.NetworkInstance{
-					{
-						Name: "vpc-internet",
-						Interfaces: []string{
-							"n6",
-						},
-						DataNetworks: []nephiov1alpha1.DataNetwork{
-							{
-								Name: &dnnName,
-								Pool: []nephiov1alpha1.Pool{
-									{
-										Prefix: "100.100.0.0/16",
-									},
+		Spec: nephiov1alpha1.NFDeploymentSpec{
+			//NFDeploymentSpec: nephiov1alpha1.NFDeploymentSpec{
+			ParametersRefs: []nephiov1alpha1.ObjectReference{},
+			Capacity: &nephioreqv1alpha1.CapacitySpec{
+				MaxUplinkThroughput:   resource.MustParse("1G"),
+				MaxDownlinkThroughput: resource.MustParse("5G"),
+			},
+			Interfaces: interfaces,
+			NetworkInstances: []nephiov1alpha1.NetworkInstance{
+				{
+					Name: "vpc-internet",
+					Interfaces: []string{
+						"n6",
+					},
+					DataNetworks: []nephiov1alpha1.DataNetwork{
+						{
+							Name: &dnnName,
+							Pool: []nephiov1alpha1.Pool{
+								{
+									Prefix: "100.100.0.0/16",
 								},
 							},
 						},
-						BGP:   nil,
-						Peers: []nephiov1alpha1.PeerConfig{},
 					},
+					BGP:   nil,
+					Peers: []nephiov1alpha1.PeerConfig{},
 				},
 			},
 		},
@@ -349,26 +350,25 @@ func TestCreateNetworkAttachmentDefinitionNetworks(t *testing.T) {
 	}
 }
 
-func newSmfDeployment(name string) *nephiov1alpha1.SMFDeployment {
+func newSmfDeployment(name string) *nephiov1alpha1.NFDeployment {
 	interfaces := []nephiov1alpha1.InterfaceConfig{}
 	n4int := newSmfNxInterface("n4")
 	interfaces = append(interfaces, n4int)
 
-	return &nephiov1alpha1.SMFDeployment{
+	return &nephiov1alpha1.NFDeployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: name + "-ns",
 		},
-		Spec: nephiov1alpha1.SMFDeploymentSpec{
-			NFDeploymentSpec: nephiov1alpha1.NFDeploymentSpec{
-				ConfigRefs: []apiv1.ObjectReference{},
-				Capacity: &nephioreqv1alpha1.CapacitySpec{
-					MaxSessions:      1000,
-					MaxSubscribers:   1000,
-					MaxNFConnections: 2000,
-				},
-				Interfaces: interfaces,
+		Spec: nephiov1alpha1.NFDeploymentSpec{
+			//NFDeploymentSpec: nephiov1alpha1.NFDeploymentSpec{
+			ParametersRefs: []nephiov1alpha1.ObjectReference{},
+			Capacity: &nephioreqv1alpha1.CapacitySpec{
+				MaxSessions:      1000,
+				MaxSubscribers:   1000,
+				MaxNFConnections: 2000,
 			},
+			Interfaces: interfaces,
 		},
 	}
 }

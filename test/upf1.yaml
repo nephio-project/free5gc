@@ -1,31 +1,32 @@
 apiVersion: workload.nephio.org/v1alpha1
-kind: UPFDeployment
+kind: NFDeployment
 
 metadata:
   namespace: free5gc
-  name: upf-1
+  name: free5gc-upf-1
   annotations:
     config.kubernetes.io/local-config: "false"
 
 spec:
+  provider: "upf.free5gc.nephio.org"      
   capacity:
     maxUplinkThroughput: 3G
     maxDownlinkThroughput: 1G
   interfaces:
     - name: n3
       ipv4:
-        address: 13.0.0.2/24
-        gateway: 13.0.0.1
-      vlanID: 13
+        address: 10.10.50.2/24
+        gateway: 10.10.50.1
+      vlanID: 12
     - name: n4
       ipv4:
-        address: 14.0.0.2/24
-        gateway: 14.0.0.1
+        address: 10.10.30.2/24
+        gateway: 10.10.30.1
       vlanID: 14
     - name: n6
       ipv4:
-        address: 16.0.0.2/24
-        gateway: 16.0.0.1
+        address: 10.10.40.2/24
+        gateway: 10.10.40.1
       vlanID: 16
   networkInstances:
     - name: vpc-ran
@@ -41,4 +42,4 @@ spec:
         - name: internet
           pool:
             - prefix: 10.10.0.0/16
-  configRefs:
+  parametersRefs:

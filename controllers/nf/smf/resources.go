@@ -32,7 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func createDeployment(log logr.Logger, configMapVersion string, smfDeployment *nephiov1alpha1.SMFDeployment) (*appsv1.Deployment, error) {
+func createDeployment(log logr.Logger, configMapVersion string, smfDeployment *nephiov1alpha1.NFDeployment) (*appsv1.Deployment, error) {
 	namespace := smfDeployment.Namespace
 	instanceName := smfDeployment.Name
 	spec := smfDeployment.Spec
@@ -139,7 +139,7 @@ func createDeployment(log logr.Logger, configMapVersion string, smfDeployment *n
 	return deployment, nil
 }
 
-func createService(smfDeployment *nephiov1alpha1.SMFDeployment) *apiv1.Service {
+func createService(smfDeployment *nephiov1alpha1.NFDeployment) *apiv1.Service {
 	namespace := smfDeployment.Namespace
 	instanceName := smfDeployment.Name
 
@@ -167,7 +167,7 @@ func createService(smfDeployment *nephiov1alpha1.SMFDeployment) *apiv1.Service {
 	return service
 }
 
-func createConfigMap(log logr.Logger, smfDeployment *nephiov1alpha1.SMFDeployment, smfConfigRefs []*refv1alpha1.Config) (*apiv1.ConfigMap, error) {
+func createConfigMap(log logr.Logger, smfDeployment *nephiov1alpha1.NFDeployment, smfConfigRefs []*refv1alpha1.Config) (*apiv1.ConfigMap, error) {
 	namespace := smfDeployment.Namespace
 	instanceName := smfDeployment.Name
 
@@ -241,7 +241,7 @@ func createConfigMap(log logr.Logger, smfDeployment *nephiov1alpha1.SMFDeploymen
 	return configMap, nil
 }
 
-func createResourceRequirements(smfDeploymentSpec nephiov1alpha1.SMFDeploymentSpec) (int32, *apiv1.ResourceRequirements, error) {
+func createResourceRequirements(smfDeploymentSpec nephiov1alpha1.NFDeploymentSpec) (int32, *apiv1.ResourceRequirements, error) {
 	// TODO: Requirements should be calculated based on DL, UL
 	// TODO: Increase number of recpicas based on NFDeployment.Capacity.MaxSessions
 
@@ -277,13 +277,13 @@ func createResourceRequirements(smfDeploymentSpec nephiov1alpha1.SMFDeploymentSp
 	return replicas, &resources, nil
 }
 
-func createNetworkAttachmentDefinitionNetworks(templateName string, smfDeploymentSpec *nephiov1alpha1.SMFDeploymentSpec) (string, error) {
+func createNetworkAttachmentDefinitionNetworks(templateName string, smfDeploymentSpec *nephiov1alpha1.NFDeploymentSpec) (string, error) {
 	return controllers.CreateNetworkAttachmentDefinitionNetworks(templateName, map[string][]nephiov1alpha1.InterfaceConfig{
 		"n4": controllers.GetInterfaceConfigs(smfDeploymentSpec.Interfaces, "n4"),
 	})
 }
 
-func getNetworkInstances(upfDeploymentSpec *nephiov1alpha1.UPFDeploymentSpec, interfaceName string) ([]nephiov1alpha1.NetworkInstance, bool) {
+func getNetworkInstances(upfDeploymentSpec *nephiov1alpha1.NFDeploymentSpec, interfaceName string) ([]nephiov1alpha1.NetworkInstance, bool) {
 	var networkInstances []nephiov1alpha1.NetworkInstance
 
 	for _, networkInstance := range upfDeploymentSpec.NetworkInstances {
@@ -301,14 +301,14 @@ func getNetworkInstances(upfDeploymentSpec *nephiov1alpha1.UPFDeploymentSpec, in
 	}
 }
 
-func extractConfigRefUPFDeployment(refs []*refv1alpha1.Config) ([]nephiov1alpha1.UPFDeployment, error) {
-	var ret []nephiov1alpha1.UPFDeployment
+func extractConfigRefUPFDeployment(refs []*refv1alpha1.Config) ([]nephiov1alpha1.NFDeployment, error) {
+	var ret []nephiov1alpha1.NFDeployment
 	for _, ref := range refs {
 		var b []byte
 		if ref.Spec.Config.Object == nil {
 			b = ref.Spec.Config.Raw
 		} else {
-			if ref.Spec.Config.Object.GetObjectKind().GroupVersionKind() == nephiov1alpha1.UPFDeploymentGroupVersionKind {
+			if ref.Spec.Config.Object.GetObjectKind().GroupVersionKind() == nephiov1alpha1.NFDeploymentGroupVersionKind {
 				var err error
 				if b, err = json.Marshal(ref.Spec.Config.Object); err != nil {
 					return nil, err
@@ -317,7 +317,7 @@ func extractConfigRefUPFDeployment(refs []*refv1alpha1.Config) ([]nephiov1alpha1
 				continue
 			}
 		}
-		upfDeployment := &nephiov1alpha1.UPFDeployment{}
+		upfDeployment := &nephiov1alpha1.NFDeployment{}
 		if err := json.Unmarshal(b, upfDeployment); err != nil {
 			return nil, err
 		} else {

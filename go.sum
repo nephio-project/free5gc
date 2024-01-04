@@ -128,6 +128,8 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/nephio-project/api v0.0.0-20230622115552-0304af432fd3 h1:7e6RZ+nQJLkB5NzbY8pGSxhzB2OkC3It//z8t3OE23g=
 github.com/nephio-project/api v0.0.0-20230622115552-0304af432fd3/go.mod h1:9w+JbXeyiT3KZrrXab0pzaWtiUk4upvgLzpqOtSmbpI=
+github.com/nephio-project/api v1.0.1-0.20231006162045-9ad2d0db2a8d h1:I8j2xAJWpBpI5b/GOEdANY/9k4ORzmUEd1HuiFDVGi0=
+github.com/nephio-project/api v1.0.1-0.20231006162045-9ad2d0db2a8d/go.mod h1:9w+JbXeyiT3KZrrXab0pzaWtiUk4upvgLzpqOtSmbpI=
 github.com/nokia/k8s-ipam v0.0.4-0.20230608184434-0c910788bac7 h1:ZoUMFeP4Hhh35LMvSO4+0+y+lNw0G4fhus15WpOCF8I=
 github.com/nokia/k8s-ipam v0.0.4-0.20230608184434-0c910788bac7/go.mod h1:ZVMmhD6jllAAO3YGIZFXUQbKRtEiIYgZ772bn/1GVz4=
 github.com/onsi/ginkgo/v2 v2.10.0 h1:sfUl4qgLdvkChZrWCYndY2EAu9BRIw1YphNAzy1VNWs=
