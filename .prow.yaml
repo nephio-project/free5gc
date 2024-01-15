@@ -64,3 +64,39 @@ presubmits:
           for i in \
           $(egrep -rl --null --include \*.go 'package\s+main\b' | xargs -0 -L 1  dirname  | sort -u | xargs -d '\n' -L 1 printf "%s " ) ; \
           do cd $i; echo $i; rm -f /tmp/cmd; go build -o "/tmp/cmd"; lichen -c /etc/lichen.yaml "/tmp/cmd" || exit 1; cd - ;done
+
+  - name: build-push-pre-image-free5gc-operator-commit-conf
+    cluster: default
+    always_run: true
+    branches:
+    - "main"
+    annotations:
+      description: Build and Push Presubmit Image to Hub
+    decorate: true
+    decoration_config:
+      censor_secrets: true
+    max_concurrency: 0
+    spec:
+      containers:
+      - name: kaniko
+        image: gcr.io/kaniko-project/executor:debug
+        command:
+        - "/bin/sh"
+        - "-c"
+        - |
+          executor --context=${PWD} \
+            --dockerfile=Dockerfile --destination=nephio/pre-free5gc-operator:${BUILD_ID}
+        volumeMounts:
+          - name: kaniko-secret
+            mountPath: /kaniko/.docker/
+        resources:
+          requests:
+            cpu: 2
+            memory: 2Gi
+      volumes:
+        - name: kaniko-secret
+          secret:
+            secretName: regcred
+            items:
+              - key: .dockerconfigjson
+                path: config.json
