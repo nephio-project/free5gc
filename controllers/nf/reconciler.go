@@ -104,6 +104,7 @@ func (r *NFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		amfresult, _ := amfReconciler.Reconcile(ctx, req)
 		return amfresult, nil
 	default:
+		log.Info("NFDeployment NOT for free5gc", "nfDeployment.Spec.Provider", nfDeployment.Spec.Provider)
 		return reconcile.Result{}, nil
 	}
 }
