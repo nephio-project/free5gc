@@ -94,13 +94,13 @@ func (r *NFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	switch nfDeployment.Spec.Provider {
-	case "upf.free5gc.nephio.org":
+	case "upf.free5gc.io":
 		upfresult, _ := upfReconciler.Reconcile(ctx, req)
 		return upfresult, nil
-	case "smf.free5gc.nephio.org":
+	case "smf.free5gc.io":
 		smfresult, _ := smfReconciler.Reconcile(ctx, req)
 		return smfresult, nil
-	case "amf.free5gc.nephio.org":
+	case "amf.free5gc.io":
 		amfresult, _ := amfReconciler.Reconcile(ctx, req)
 		return amfresult, nil
 	default:
