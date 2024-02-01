@@ -33,7 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// Reconciles a UPFDeployment resource
+// Reconciles a UPF NFDeployment resource
 type UPFDeploymentReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -49,16 +49,16 @@ type UPFDeploymentReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *UPFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.FromContext(ctx).WithValues("NFDeployment", req.NamespacedName)
+	log := log.FromContext(ctx).WithValues("NFDeployment", req.NamespacedName, "NF", "UPF")
 
 	nfDeployment := new(nephiov1alpha1.NFDeployment)
 	err := r.Client.Get(ctx, req.NamespacedName, nfDeployment)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			log.Info("NFDeployment resource not found, ignoring because object must be deleted")
+			log.Info("UPF NFDeployment resource not found, ignoring because object must be deleted")
 			return reconcile.Result{}, nil
 		}
-		log.Error(err, "Failed to get NFDeployment")
+		log.Error(err, "Failed to get UPF NFDeployment")
 		return reconcile.Result{}, err
 	}
 

@@ -1,25 +1,34 @@
 free5gc-operator
 ================
 
-free5GC operator for Nephio.
+A Kubernetes operator for [free5GC](https://free5gc.org/).
 
 Description
 -----------
 
-The Nephio free5GC operator takes the Nephio community produced XXXDeployment (where XXX = AMF | SMF | UPF) custom resources, and deploys the corresponding free5GC AMF | SMF | UPF onto the cluster based on the CR's specifications.
+Manages deployments of free5GC's AMF, SMF, and UPF network functions by reconciling Nephio's
+`NFDeployment` custom resources for the `amf.free5gc.io`, `smf.free5gc.io`, and `upf.free5gc.io`
+providers.
 
 Getting Started
 ---------------
 
-Prior to running the free5GC operator, Multus needs to be installed on cluster with the macvlan CNI.
-
 ### Deploy the CRDs
 
+We need the Nephio API CRDs from the [api repository](https://github.com/nephio-project/api):
+
 ```sh
-make install
+TAG=main
+kubectl apply -f https://raw.githubusercontent.com/nephio-project/api/$TAG/config/crd/bases/workload.nephio.org_nfdeployments.yaml
+kubectl apply -f https://raw.githubusercontent.com/nephio-project/api/$TAG/config/crd/bases/workload.nephio.org_nfconfigs.yaml
+kubectl apply -f https://raw.githubusercontent.com/nephio-project/api/$TAG/config/crd/bases/ref.nephio.org_configs.yaml
 ```
 
+(Replace `TAG` with a specific tagged version, e.g. `v2.0.0`)
+
 ### Run the Operator
+
+Multus needs to be installed on cluster with the "macvlan" CNI plugin.
 
 For testing, you can run the operator locally against the cluster:
 
@@ -27,15 +36,15 @@ For testing, you can run the operator locally against the cluster:
 make run
 ```
 
-### Deploy the Operator
-
-Use your own Docker Hub registry:
+Or you can build an image:
 
 ```sh
 make docker-build docker-push REGISTRY=myregistry
 ```
 
-Then deploy to the cluster:
+(Use your own Docker Hub registry)
+
+Then deploy it the cluster:
 
 ```sh
 make deploy REGISTRY=myregistry
@@ -47,8 +56,8 @@ make deploy REGISTRY=myregistry
 kubectl apply -f test/
 ```
 
-
-## License
+License
+-------
 
 Copyright 2023 The Nephio Authors.
 

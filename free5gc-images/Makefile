@@ -1,7 +1,7 @@
 FREE5GC_VERSION ?= 3.2.1
 IMG_REGISTRY ?= docker.io/nephio
 BASE_IMAGE ?= alpine:3.18.0
-BUILDER_IMAGE ?= golang:1.20.5
+BUILDER_IMAGE ?= golang:1.21.6
 
 ifeq ($(NO_CACHE),true)
 	BUILD_ARGS=--no-cache

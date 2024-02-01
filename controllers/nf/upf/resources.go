@@ -145,19 +145,19 @@ func createConfigMap(log logr.Logger, upfDeployment *nephiov1alpha1.NFDeployment
 
 	n4ip, err := controllers.GetFirstInterfaceConfigIPv4(upfDeployment.Spec.Interfaces, "n4")
 	if err != nil {
-		log.Error(err, "Interface N4 not found in UPFDeployment Spec")
+		log.Error(err, "Interface N4 not found in UPF NFDeployment Spec")
 		return nil, err
 	}
 
 	n3ip, err := controllers.GetFirstInterfaceConfigIPv4(upfDeployment.Spec.Interfaces, "n3")
 	if err != nil {
-		log.Error(err, "Interface N3 not found in UPFDeployment Spec")
+		log.Error(err, "Interface N3 not found in UPF NFDeployment Spec")
 		return nil, err
 	}
 
 	n6ip, err := controllers.GetFirstInterfaceConfig(upfDeployment.Spec.Interfaces, "n6")
 	if err != nil {
-		log.Error(err, "Interface N6 not found in UPFDeployment Spec")
+		log.Error(err, "Interface N6 not found in UPF NFDeployment Spec")
 		return nil, err
 	}
 
@@ -170,19 +170,19 @@ func createConfigMap(log logr.Logger, upfDeployment *nephiov1alpha1.NFDeployment
 	if n6Instances, ok := getNetworkInstances(upfDeployment.Spec, "n6"); ok {
 		templateValues.N6cfg = n6Instances
 	} else {
-		log.Error(err, "No N6 interface in UPFDeployment Spec.")
-		return nil, errors.New("No N6 intefaces in UPFDeployment Spec.")
+		log.Error(err, "No N6 interface in UPF NFDeployment Spec")
+		return nil, errors.New("No N6 intefaces in UPF NFDeployment Spec")
 	}
 
 	configuration, err := renderConfigurationTemplate(templateValues)
 	if err != nil {
-		log.Error(err, "Could not render UPF configuration template.")
+		log.Error(err, "Could not render UPF configuration template")
 		return nil, err
 	}
 
 	wrapperScript, err := renderWrapperScriptTemplate(templateValues)
 	if err != nil {
-		log.Error(err, "Could not render UPF wrapper script template.")
+		log.Error(err, "Could not render UPF wrapper script template")
 		return nil, err
 	}
 
