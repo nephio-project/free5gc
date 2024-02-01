@@ -8,7 +8,7 @@ metadata:
     config.kubernetes.io/local-config: "false"
 
 spec:
-  provider: "upf.free5gc.nephio.org"      
+  provider: upf.free5gc.io
   capacity:
     maxUplinkThroughput: 3G
     maxDownlinkThroughput: 1G

@@ -8,7 +8,7 @@ metadata:
     config.kubernetes.io/local-config: "false"
 
 spec:
-  provider: "smf.free5gc.nephio.org"      
+  provider: smf.free5gc.io
   capacity:
     maxSessions: 5000
     maxNFConnections: 100
@@ -25,8 +25,12 @@ spec:
       dataNetworks:
         - name: internet
           pool:
-            - prefix: "10.200.50.0/24" 
+            - prefix: 10.200.50.0/24
   parametersRefs:
-              - apiVersion: "ref.nephio.org/v1alpha1"
-                kind: Config
-                name: smf-config-ref
+    - apiVersion: ref.nephio.org/v1alpha1
+      kind: Config
+      name: upf1-config-ref
+# Uncomment to test duplication avoidance:
+#    - apiVersion: ref.nephio.org/v1alpha1
+#      kind: Config
+#      name: upf1-config-ref

@@ -27,17 +27,17 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func createDeployment(log logr.Logger, configMapVersion string, nfDeployment *nephiov1alpha1.NFDeployment) (*appsv1.Deployment, error) {
-	namespace := nfDeployment.Namespace
-	instanceName := nfDeployment.Name
-	spec := nfDeployment.Spec
+func createDeployment(log logr.Logger, configMapVersion string, amfDeployment *nephiov1alpha1.NFDeployment) (*appsv1.Deployment, error) {
+	namespace := amfDeployment.Namespace
+	instanceName := amfDeployment.Name
+	spec := amfDeployment.Spec
 
 	replicas, resourceRequirements, err := createResourceRequirements(spec)
 	if err != nil {
 		return nil, err
 	}
 
-	networkAttachmentDefinitionNetworks, err := createNetworkAttachmentDefinitionNetworks(nfDeployment.Name, &spec)
+	networkAttachmentDefinitionNetworks, err := createNetworkAttachmentDefinitionNetworks(amfDeployment.Name, &spec)
 	if err != nil {
 		return nil, err
 	}
@@ -132,9 +132,9 @@ func createDeployment(log logr.Logger, configMapVersion string, nfDeployment *ne
 	return deployment, nil
 }
 
-func createService(nfDeployment *nephiov1alpha1.NFDeployment) *apiv1.Service {
-	namespace := nfDeployment.Namespace
-	instanceName := nfDeployment.Name
+func createService(amfDeployment *nephiov1alpha1.NFDeployment) *apiv1.Service {
+	namespace := amfDeployment.Namespace
+	instanceName := amfDeployment.Name
 
 	labels := map[string]string{
 		"name": instanceName,
@@ -160,13 +160,13 @@ func createService(nfDeployment *nephiov1alpha1.NFDeployment) *apiv1.Service {
 	return service
 }
 
-func createConfigMap(log logr.Logger, nfDeployment *nephiov1alpha1.NFDeployment) (*apiv1.ConfigMap, error) {
-	namespace := nfDeployment.Namespace
-	instanceName := nfDeployment.Name
+func createConfigMap(log logr.Logger, amfDeployment *nephiov1alpha1.NFDeployment) (*apiv1.ConfigMap, error) {
+	namespace := amfDeployment.Namespace
+	instanceName := amfDeployment.Name
 
-	n2ip, err := controllers.GetFirstInterfaceConfigIPv4(nfDeployment.Spec.Interfaces, "n2")
+	n2ip, err := controllers.GetFirstInterfaceConfigIPv4(amfDeployment.Spec.Interfaces, "n2")
 	if err != nil {
-		log.Error(err, "Interface N2 not found in NFDeployment Spec")
+		log.Error(err, "Interface N2 not found in AMF NFDeployment Spec")
 		return nil, err
 	}
 
@@ -177,7 +177,7 @@ func createConfigMap(log logr.Logger, nfDeployment *nephiov1alpha1.NFDeployment)
 
 	configuration, err := renderConfigurationTemplate(templateValues)
 	if err != nil {
-		log.Error(err, "Could not render NF configuration template.")
+		log.Error(err, "Could not render AMF configuration template")
 		return nil, err
 	}
 
@@ -199,7 +199,7 @@ func createConfigMap(log logr.Logger, nfDeployment *nephiov1alpha1.NFDeployment)
 	return configMap, nil
 }
 
-func createResourceRequirements(nfDeploymentSpec nephiov1alpha1.NFDeploymentSpec) (int32, *apiv1.ResourceRequirements, error) {
+func createResourceRequirements(amfDeploymentSpec nephiov1alpha1.NFDeploymentSpec) (int32, *apiv1.ResourceRequirements, error) {
 	// TODO: Requirements should be calculated based on DL, UL
 	// TODO: increase number of recpicas based on NFDeployment.Capacity.MaxSessions
 
@@ -211,7 +211,7 @@ func createResourceRequirements(nfDeploymentSpec nephiov1alpha1.NFDeploymentSpec
 	var memoryLimit string
 	var memoryRequest string
 
-	if nfDeploymentSpec.Capacity.MaxSubscribers > 1000 {
+	if amfDeploymentSpec.Capacity.MaxSubscribers > 1000 {
 		cpuLimit = "300m"
 		memoryLimit = "256Mi"
 		cpuRequest = "300m"
@@ -237,8 +237,8 @@ func createResourceRequirements(nfDeploymentSpec nephiov1alpha1.NFDeploymentSpec
 	return replicas, &resources, nil
 }
 
-func createNetworkAttachmentDefinitionNetworks(templateName string, nfDeploymentSpec *nephiov1alpha1.NFDeploymentSpec) (string, error) {
+func createNetworkAttachmentDefinitionNetworks(templateName string, amfDeploymentSpec *nephiov1alpha1.NFDeploymentSpec) (string, error) {
 	return controllers.CreateNetworkAttachmentDefinitionNetworks(templateName, map[string][]nephiov1alpha1.InterfaceConfig{
-		"n2": controllers.GetInterfaceConfigs(nfDeploymentSpec.Interfaces, "n2"),
+		"n2": controllers.GetInterfaceConfigs(amfDeploymentSpec.Interfaces, "n2"),
 	})
 }

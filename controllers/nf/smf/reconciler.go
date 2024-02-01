@@ -18,8 +18,10 @@ package smf
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/go-logr/logr"
 	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
 	refv1alpha1 "github.com/nephio-project/api/references/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers"
@@ -35,45 +37,60 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// Reconciles a SMFDeployment resource
+// Reconciles a SMF NFDeployment resource
 type SMFDeploymentReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
 
 // Fetch all SMF ConfigRefs
-func (r *SMFDeploymentReconciler) GetAllConfigRefs(ctx context.Context, smfDeployment *nephiov1alpha1.NFDeployment, namespace types.NamespacedName) ([]*refv1alpha1.Config, error) {
-	var ret []*refv1alpha1.Config
+func (r *SMFDeploymentReconciler) GetAllConfigRefs(ctx context.Context, log logr.Logger, smfDeployment *nephiov1alpha1.NFDeployment, namespace types.NamespacedName) ([]*refv1alpha1.Config, error) {
+	var configRefs []*refv1alpha1.Config
+
 	for _, objRef := range smfDeployment.Spec.ParametersRefs {
-		cfgRef := &refv1alpha1.Config{}
-		if err := r.Client.Get(ctx, types.NamespacedName{Name: *objRef.Name, Namespace: namespace.Namespace}, cfgRef); err != nil {
-			return ret, err
+		configRef := new(refv1alpha1.Config)
+		if err := r.Client.Get(ctx, types.NamespacedName{Name: *objRef.Name, Namespace: namespace.Namespace}, configRef); err != nil {
+			return configRefs, err
 		}
-		ret = append(ret, cfgRef)
+
+		var duplicate bool
+		for _, configRef_ := range configRefs {
+			if (configRef_.Namespace == configRef.Namespace) && (configRef_.Name == configRef.Name) {
+				duplicate = true
+				break
+			}
+		}
+		if duplicate {
+			log.Info(fmt.Sprintf("Duplicate entry in ConfigRefs: %s/%s", configRef.Namespace, configRef.Name))
+			continue
+		}
+
+		configRefs = append(configRefs, configRef)
 	}
-	return ret, nil
+
+	return configRefs, nil
 }
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
-// the SMFDeployment object against the actual cluster state, and then
+// the SMF NFDeployment object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.FromContext(ctx).WithValues("SMFDeployment", req.NamespacedName)
+	log := log.FromContext(ctx).WithValues("NFDeployment", req.NamespacedName, "NF", "SMF")
 
 	smfDeployment := new(nephiov1alpha1.NFDeployment)
 	err := r.Client.Get(ctx, req.NamespacedName, smfDeployment)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			log.Info("SMFDeployment resource not found, ignoring because object must be deleted")
+			log.Info("SMF NFDeployment resource not found, ignoring because object must be deleted")
 			return reconcile.Result{}, nil
 		}
-		log.Error(err, "Failed to get SMFDeployment")
+		log.Error(err, "Failed to get SMF NFDeployment")
 		return reconcile.Result{}, err
 	}
 	namespace := smfDeployment.Namespace
@@ -124,7 +141,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	var smfConfigRefs []*refv1alpha1.Config
-	if smfConfigRefs, err = r.GetAllConfigRefs(ctx, smfDeployment, req.NamespacedName); err != nil {
+	if smfConfigRefs, err = r.GetAllConfigRefs(ctx, log, smfDeployment, req.NamespacedName); err != nil {
 		log.Info("Not all config references found... rerun reconcile")
 		return reconcile.Result{}, err
 	}
@@ -132,7 +149,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if configMap, err := createConfigMap(log, smfDeployment, smfConfigRefs); err == nil {
 		if !configMapFound {
 			log.Info("Creating ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
-			// Set the controller reference, specifying that SMFDeployment controls the underlying ConfigMap
+			// Set the controller reference, specifying that SMF NFDeployment controls the underlying ConfigMap
 			if err := ctrl.SetControllerReference(smfDeployment, configMap, r.Scheme); err != nil {
 				log.Error(err, "Got error while setting Owner reference on ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
 			}
@@ -151,9 +168,9 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if !serviceFound {
 		service := createService(smfDeployment)
 
-		log.Info("Creating SMFDeployment service", "Service.namespace", service.Namespace, "Service.name", service.Name)
+		log.Info("Creating SMF NFDeployment service", "Service.namespace", service.Namespace, "Service.name", service.Name)
 
-		// Set the controller reference, specifying that SMFDeployment controls the underlying Service
+		// Set the controller reference, specifying that SMF NFDeployment controls the underlying Service
 		if err := ctrl.SetControllerReference(smfDeployment, service, r.Scheme); err != nil {
 			log.Error(err, "Got error while setting Owner reference on SMF Service", "Service.namespace", service.Namespace, "Service.name", service.Name)
 		}
@@ -168,7 +185,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		if !deploymentFound {
 			// Only create Deployment in case all required NADs are present. Otherwise Requeue in 10 sec.
 			if ok := controllers.ValidateNetworkAttachmentDefinitions(ctx, r.Client, log, smfDeployment.Kind, deployment); ok {
-				// Set the controller reference, specifying that SMFDeployment controls the underlying Deployment
+				// Set the controller reference, specifying that SMF NFDeployment controls the underlying Deployment
 				if err := ctrl.SetControllerReference(smfDeployment, deployment, r.Scheme); err != nil {
 					log.Error(err, "Got error while setting Owner reference on Deployment", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
 				}

@@ -1,37 +1,39 @@
 apiVersion: ref.nephio.org/v1alpha1
 kind: Config
+
 metadata:
-  name: smf-config-ref-2
   namespace: free5gc
+  name: upf1-config-ref
+
 spec:
   config:
     apiVersion: workload.nephio.org/v1alpha1
-    kind: UPFDeployment
+    kind: NFDeployment
     metadata:
-      name: free5gc-upf-2
-      namespace: upf-2
+      namespace: free5gc
+      name: free5gc-upf-1
     spec:
       capacity:
         maxUplinkThroughput: 1G
-        maxDownlinkThroughput: 10G
+        maxDownlinkThroughput: 5G
       interfaces:
         - name: n6
           ipv4:
-            address: 10.10.13.100/24
-            gateway: 10.10.13.1
+            address: 10.10.12.10/24
+            gateway: 10.10.12.1
         - name: n3
           ipv4:
-            address: 10.10.15.100/24
-            gateway: 10.10.15.1
+            address: 10.10.10.10/24
+            gateway: 10.10.10.1
         - name: n4
           ipv4:
-            address: 10.10.14.100/24
-            gateway: 10.10.14.1
+            address: 10.10.11.10/24
+            gateway: 10.10.11.1
       networkInstances:
-        - name: private-network
+        - name: vpc-internet
           interfaces:
           - n6
           dataNetworks:
-          - name: junk
+          - name: apn-test
             pool:
-              - prefix: 100.200.0.0/16
+              - prefix: 100.100.0.0/16

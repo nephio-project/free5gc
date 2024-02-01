@@ -8,7 +8,7 @@ metadata:
     config.kubernetes.io/local-config: "false"
 
 spec:
-  provider: "amf.free5gc.nephio.org"      
+  provider: amf.free5gc.io
   capacity:
     maxSubscribers: 1000
   interfaces:
