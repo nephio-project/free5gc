@@ -1,4 +1,4 @@
-ARG VERSION=3.2.1
+ARG VERSION=3.3.0
 ARG REGISTRY=docker.io/nephio
 ARG BASE_IMAGE=alpine
 
@@ -10,7 +10,7 @@ ENV GIN_MODE="release"
 RUN apk --no-cache add libc6-compat
 
 WORKDIR /free5gc
-RUN mkdir --parents ./config/ ./webconsole/public
+RUN mkdir --parents ./cert/ ./config/ ./webconsole/public
 
 # Copy executable and default configs/statics
 COPY --from=builder /free5gc/webconsole ./webconsole/

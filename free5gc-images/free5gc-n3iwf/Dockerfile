@@ -1,4 +1,4 @@
-ARG VERSION=3.2.1
+ARG VERSION=3.3.0
 ARG REGISTRY=docker.io/nephio
 ARG BASE_IMAGE=alpine
 
@@ -11,15 +11,15 @@ ENV GIN_MODE="release"
 RUN apk add -U iproute2
 
 WORKDIR /free5gc
-RUN mkdir --parents ./log/ ./config/TLS/ ./n3iwf/
+RUN mkdir --parents ./cert/ ./log/ ./cert/ ./n3iwf/
 
 # Copy executable and default certs/configs
 COPY --from=builder /free5gc/n3iwf ./n3iwf
-COPY --from=builder /free5gc/config/TLS/n3iwf.pem ./config/TLS/
-COPY --from=builder /free5gc/config/TLS/n3iwf.key ./config/TLS/
+COPY --from=builder /free5gc/cert/n3iwf.pem ./cert/
+COPY --from=builder /free5gc/cert/n3iwf.key ./cert/
 COPY --from=builder /free5gc/config/n3iwfcfg.yaml ./config/
 
 VOLUME [ "/free5gc/config" ]
-#VOLUME [ "/free5gc/config/TLS" ]
+
 
 WORKDIR /free5gc/n3iwf

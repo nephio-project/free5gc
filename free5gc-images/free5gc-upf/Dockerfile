@@ -1,4 +1,4 @@
-ARG VERSION=3.2.1
+ARG VERSION=3.3.0
 ARG REGISTRY=docker.io/nephio
 ARG BASE_IMAGE=alpine
 
@@ -11,7 +11,7 @@ ENV GIN_MODE="release"
 RUN apk --no-cache add iproute2 iptables
 
 WORKDIR /free5gc
-RUN mkdir --parents ./config/ ./upf/
+RUN mkdir --parents ./cert/ ./config/ ./upf/
 
 # Copy executable and default configs/certs
 COPY --from=builder /free5gc/upf ./upf/
