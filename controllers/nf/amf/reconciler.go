@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
+	nephiov1alpha1 "github.com/nephio-project/api/workload/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -53,7 +53,7 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	log := log.FromContext(ctx).WithValues("NFDeployment", req.NamespacedName, "NF", "AMF")
 
 	amfDeployment := new(nephiov1alpha1.NFDeployment)
-	err := r.Client.Get(ctx, req.NamespacedName, amfDeployment)
+	err := r.Get(ctx, req.NamespacedName, amfDeployment)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			log.Info("AMF NFDeployment resource not found, ignoring sibecausence object must be deleted")
@@ -69,7 +69,7 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	configMapName := amfDeployment.Name
 	var configMapVersion string
 	currentConfigMap := new(apiv1.ConfigMap)
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: configMapName, Namespace: namespace}, currentConfigMap); err == nil {
+	if err := r.Get(ctx, types.NamespacedName{Name: configMapName, Namespace: namespace}, currentConfigMap); err == nil {
 		configMapFound = true
 		configMapVersion = currentConfigMap.ResourceVersion
 	}
@@ -77,14 +77,14 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	serviceFound := false
 	serviceName := amfDeployment.Name
 	currentService := new(apiv1.Service)
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, currentService); err == nil {
+	if err := r.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, currentService); err == nil {
 		serviceFound = true
 	}
 
 	deploymentFound := false
 	deploymentName := amfDeployment.Name
 	currentDeployment := new(appsv1.Deployment)
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: deploymentName, Namespace: namespace}, currentDeployment); err == nil {
+	if err := r.Get(ctx, types.NamespacedName{Name: deploymentName, Namespace: namespace}, currentDeployment); err == nil {
 		deploymentFound = true
 	}
 
@@ -122,7 +122,7 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				log.Error(err, "Got error while setting Owner reference on configmap.", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
 			}
 
-			if err := r.Client.Create(ctx, configMap); err != nil {
+			if err := r.Create(ctx, configMap); err != nil {
 				log.Error(err, "Failed to create ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
 				return reconcile.Result{}, err
 			}
@@ -144,7 +144,7 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			log.Error(err, "Got error while setting Owner reference on AMF service", "Service.namespace", service.Namespace, "Service.name", service.Name)
 		}
 
-		if err := r.Client.Create(ctx, service); err != nil {
+		if err := r.Create(ctx, service); err != nil {
 			log.Error(err, "Failed to create Service", "Service.namespace", service.Namespace, "Service.name", service.Name)
 			return reconcile.Result{}, err
 		}
@@ -160,7 +160,7 @@ func (r *AMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				}
 
 				log.Info("Creating Deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
-				if err := r.Client.Create(ctx, deployment); err != nil {
+				if err := r.Create(ctx, deployment); err != nil {
 					log.Error(err, "Failed to create new Deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
 				}
 

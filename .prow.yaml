@@ -4,12 +4,13 @@ presubmits:
     run_if_changed: "^.*.go$"
     spec:
       containers:
-      - image: nephio/gotests:7
+      - image: golang:1.25-alpine
         command:
         - "/bin/sh"
-        args:
         - "-c"
+        args:
         - |
+          apk add --no-cache make bash
           make unit
 
   - name: f5gc-operator-lint
@@ -17,12 +18,13 @@ presubmits:
     run_if_changed: "^.*.go$"
     spec:
       containers:
-      - image: nephio/gotests:7
+      - image: golangci/golangci-lint:v2.8.0-alpine
         command:
         - "/bin/sh"
-        args:
         - "-c"
+        args:
         - |
+          apk add --no-cache make bash
           make lint
 
   - name: f5gc-operator-gosec
@@ -30,12 +32,13 @@ presubmits:
     run_if_changed: "^.*.go$"
     spec:
       containers:
-      - image: nephio/gotests:7
+      - image: golang:1.25-alpine
         command:
         - "/bin/sh"
-        args:
         - "-c"
+        args:
         - |
+          apk add --no-cache make bash git
           make gosec
 
   - name: f5gc-operator-license-header-check
@@ -43,7 +46,7 @@ presubmits:
     run_if_changed: "^.*.go$"
     spec:
       containers:
-      - image: nephio/gotests:7
+      - image: nephio/gotests:latest
         command:
         - "/bin/sh"
         args:
@@ -55,7 +58,7 @@ presubmits:
     always_run: true
     spec:
       containers:
-      - image: nephio/gotests:7
+      - image: nephio/gotests:latest
         command:
         - "/bin/bash"
         args:

@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
 	refv1alpha1 "github.com/nephio-project/api/references/v1alpha1"
+	nephiov1alpha1 "github.com/nephio-project/api/workload/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -49,7 +49,7 @@ func (r *SMFDeploymentReconciler) GetAllConfigRefs(ctx context.Context, log logr
 
 	for _, objRef := range smfDeployment.Spec.ParametersRefs {
 		configRef := new(refv1alpha1.Config)
-		if err := r.Client.Get(ctx, types.NamespacedName{Name: *objRef.Name, Namespace: namespace.Namespace}, configRef); err != nil {
+		if err := r.Get(ctx, types.NamespacedName{Name: *objRef.Name, Namespace: namespace.Namespace}, configRef); err != nil {
 			return configRefs, err
 		}
 
@@ -84,7 +84,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	log := log.FromContext(ctx).WithValues("NFDeployment", req.NamespacedName, "NF", "SMF")
 
 	smfDeployment := new(nephiov1alpha1.NFDeployment)
-	err := r.Client.Get(ctx, req.NamespacedName, smfDeployment)
+	err := r.Get(ctx, req.NamespacedName, smfDeployment)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			log.Info("SMF NFDeployment resource not found, ignoring because object must be deleted")
@@ -99,7 +99,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	configMapName := smfDeployment.Name
 	var configMapVersion string
 	currentConfigMap := new(apiv1.ConfigMap)
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: configMapName, Namespace: namespace}, currentConfigMap); err == nil {
+	if err := r.Get(ctx, types.NamespacedName{Name: configMapName, Namespace: namespace}, currentConfigMap); err == nil {
 		configMapFound = true
 		configMapVersion = currentConfigMap.ResourceVersion
 	}
@@ -107,13 +107,13 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	serviceFound := false
 	serviceName := smfDeployment.Name
 	currentService := new(apiv1.Service)
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, currentService); err == nil {
+	if err := r.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, currentService); err == nil {
 		serviceFound = true
 	}
 	deploymentFound := false
 	deploymentName := smfDeployment.Name
 	currentDeployment := new(appsv1.Deployment)
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: deploymentName, Namespace: namespace}, currentDeployment); err == nil {
+	if err := r.Get(ctx, types.NamespacedName{Name: deploymentName, Namespace: namespace}, currentDeployment); err == nil {
 		deploymentFound = true
 	}
 
@@ -154,7 +154,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				log.Error(err, "Got error while setting Owner reference on ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
 			}
 
-			if err := r.Client.Create(ctx, configMap); err != nil {
+			if err := r.Create(ctx, configMap); err != nil {
 				log.Error(err, "Failed to create ConfigMap", "ConfigMap.namespace", configMap.Namespace, "ConfigMap.name", configMap.Name)
 				return reconcile.Result{}, err
 			}
@@ -175,7 +175,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			log.Error(err, "Got error while setting Owner reference on SMF Service", "Service.namespace", service.Namespace, "Service.name", service.Name)
 		}
 
-		if err := r.Client.Create(ctx, service); err != nil {
+		if err := r.Create(ctx, service); err != nil {
 			log.Error(err, "Failed to create Service", "Service.namespace", service.Namespace, "Service.name", service.Name)
 			return reconcile.Result{}, err
 		}
@@ -191,7 +191,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				}
 
 				log.Info("Creating Deployment", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
-				if err := r.Client.Create(ctx, deployment); err != nil {
+				if err := r.Create(ctx, deployment); err != nil {
 					log.Error(err, "Failed to create new Deployment", "Deployment.namespace", deployment.Name, "Deployment.name", deployment.Name)
 				}
 
@@ -203,7 +203,7 @@ func (r *SMFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			}
 		} else {
 
-			if err = r.Client.Update(ctx, deployment); err != nil {
+			if err = r.Update(ctx, deployment); err != nil {
 				log.Error(err, "Failed to update Deployment", "Deployment.namespace", deployment.Namespace, "Deployment.name", deployment.Name)
 			}
 		}

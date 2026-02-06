@@ -24,8 +24,8 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
 	refv1alpha1 "github.com/nephio-project/api/references/v1alpha1"
+	nephiov1alpha1 "github.com/nephio-project/api/workload/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers/nf"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -33,6 +33,7 @@ import (
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	runscheme "sigs.k8s.io/controller-runtime/pkg/scheme"
 	//+kubebuilder:scaffold:imports
 )
@@ -67,9 +68,10 @@ func main() {
 	controllerruntime.SetLogger(zap.New(zap.UseFlagOptions(&zapOptions)))
 
 	manager, err := controllerruntime.NewManager(controllerruntime.GetConfigOrDie(), controllerruntime.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddress,
-		Port:                   9443,
+		Scheme: scheme,
+		Metrics: metricsserver.Options{
+			BindAddress: metricsAddress,
+		},
 		HealthProbeBindAddress: healthProbeAddress,
 		LeaderElection:         leaderElect,
 		LeaderElectionID:       "5089c67f.nephio.org",

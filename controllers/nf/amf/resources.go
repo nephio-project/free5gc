@@ -18,7 +18,7 @@ package amf
 
 import (
 	"github.com/go-logr/logr"
-	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
+	nephiov1alpha1 "github.com/nephio-project/api/workload/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"

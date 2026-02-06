@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
+	nephiov1alpha1 "github.com/nephio-project/api/workload/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

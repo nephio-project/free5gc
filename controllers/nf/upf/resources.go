@@ -20,7 +20,7 @@ import (
 	"errors"
 
 	"github.com/go-logr/logr"
-	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
+	nephiov1alpha1 "github.com/nephio-project/api/workload/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -171,7 +171,7 @@ func createConfigMap(log logr.Logger, upfDeployment *nephiov1alpha1.NFDeployment
 		templateValues.N6cfg = n6Instances
 	} else {
 		log.Error(err, "No N6 interface in UPF NFDeployment Spec")
-		return nil, errors.New("No N6 intefaces in UPF NFDeployment Spec")
+		return nil, errors.New("no N6 intefaces in UPF NFDeployment Spec")
 	}
 
 	configuration, err := renderConfigurationTemplate(templateValues)

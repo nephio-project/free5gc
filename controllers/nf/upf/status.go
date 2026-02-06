@@ -17,14 +17,20 @@ limitations under the License.
 package upf
 
 import (
-	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
+	"math"
+
+	nephiov1alpha1 "github.com/nephio-project/api/workload/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func createNfDeploymentStatus(deployment *appsv1.Deployment, nfDeployment *nephiov1alpha1.NFDeployment) (nephiov1alpha1.NFDeploymentStatus, bool) {
+	gen := deployment.Generation
+	if gen > math.MaxInt32 {
+		gen = math.MaxInt32
+	}
 	nfDeploymentStatus := nephiov1alpha1.NFDeploymentStatus{
-		ObservedGeneration: int32(deployment.Generation),
+		ObservedGeneration: int32(gen), // #nosec G115 -- bounded to MaxInt32
 		Conditions:         nfDeployment.Status.Conditions,
 	}
 

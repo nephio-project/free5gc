@@ -19,7 +19,7 @@ package nf
 import (
 	"context"
 
-	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
+	nephiov1alpha1 "github.com/nephio-project/api/workload/v1alpha1"
 	amf "github.com/nephio-project/free5gc/controllers/nf/amf"
 	smf "github.com/nephio-project/free5gc/controllers/nf/smf"
 	upf "github.com/nephio-project/free5gc/controllers/nf/upf"
@@ -71,7 +71,7 @@ func (r *NFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	log := log.FromContext(ctx).WithValues("NFDeployment", req.NamespacedName)
 
 	nfDeployment := new(nephiov1alpha1.NFDeployment)
-	err := r.Client.Get(ctx, req.NamespacedName, nfDeployment)
+	err := r.Get(ctx, req.NamespacedName, nfDeployment)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			log.Info("NFDeployment resource not found, ignoring because object must be deleted")

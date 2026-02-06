@@ -1,6 +1,6 @@
-GO_VERSION ?= 1.21.6
-GOLANG_CI_VER ?= v1.52
-GOSEC_VER ?= 2.15.0
+GO_VERSION ?= 1.25
+GOLANG_CI_VER ?= v2.8.0
+GOSEC_VER ?= latest
 TEST_COVERAGE_FILE=lcov.info
 TEST_COVERAGE_HTML_FILE=coverage_unit.html
 TEST_COVERAGE_FUNC_FILE=func_coverage.out
@@ -34,7 +34,7 @@ IMG ?= $(REGISTRY)/$(PROJECT):$(TAG)
 endif
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.27.1
+ENVTEST_K8S_VERSION = 1.30
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -44,9 +44,10 @@ GOBIN=$(shell go env GOBIN)
 endif
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
+# This is a requirement for 'setup-envtest.sh' in the test target.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
-# SHELL = /usr/bin/env bash -o pipefail
-# .SHELLFLAGS = -ec
+SHELL = /usr/bin/env bash -o pipefail
+.SHELLFLAGS = -ec
 
 .PHONY: all
 all: build
@@ -91,35 +92,33 @@ vet: ## Run go vet against code.
 test: manifests generate fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
 
+.PHONY: unit_clean
+unit_clean: ## clean up the unit test artifacts created
+ifeq ($(CONTAINER_RUNNABLE), 0)
+		$(CONTAINER_RUNTIME) system prune -f
+endif
+		rm ${TEST_COVERAGE_FILE} ${TEST_COVERAGE_HTML_FILE} ${TEST_COVERAGE_FUNC_FILE} > /dev/null 2>&1
+
 .PHONY: unit
 unit: ## Run unit tests against code.
 ifeq ($(CONTAINER_RUNNABLE), 0)
-	$(CONTAINER_RUNTIME) run -it -v ${PWD}:/go/src -w /go/src docker.io/library/golang:${GO_VERSION}-alpine3.17 \
-	/bin/sh -c "go test ./... -v -coverprofile ${TEST_COVERAGE_FILE}; \
-	go tool cover -html=${TEST_COVERAGE_FILE} -o ${TEST_COVERAGE_HTML_FILE}; \
-	go tool cover -func=${TEST_COVERAGE_FILE} -o ${TEST_COVERAGE_FUNC_FILE}"
+		$(CONTAINER_RUNTIME) run -it -v ${PWD}:/go/src -w /go/src docker.io/library/golang:${GO_VERSION}-alpine \
+         /bin/sh -c "go test ./... -v -coverprofile ${TEST_COVERAGE_FILE}; \
+         go tool cover -html=${TEST_COVERAGE_FILE} -o ${TEST_COVERAGE_HTML_FILE}; \
+         go tool cover -func=${TEST_COVERAGE_FILE} -o ${TEST_COVERAGE_FUNC_FILE}"
 else
-	go test ./... -v -coverprofile ${TEST_COVERAGE_FILE}
-	go tool cover -html=${TEST_COVERAGE_FILE} -o ${TEST_COVERAGE_HTML_FILE}
-	go tool cover -func=${TEST_COVERAGE_FILE} -o ${TEST_COVERAGE_FUNC_FILE}
+		go test ./... -v -coverprofile ${TEST_COVERAGE_FILE}
+		go tool cover -html=${TEST_COVERAGE_FILE} -o ${TEST_COVERAGE_HTML_FILE}
+		go tool cover -func=${TEST_COVERAGE_FILE} -o ${TEST_COVERAGE_FUNC_FILE}
 endif
 
 # Install link at https://golangci-lint.run/usage/install/ if not running inside a container
 .PHONY: lint
 lint: ## Run lint  against code.
 ifeq ($(CONTAINER_RUNNABLE), 0)
-	$(CONTAINER_RUNTIME) run -it -v ${PWD}:/go/src -w /go/src docker.io/golangci/golangci-lint:${GOLANG_CI_VER}-alpine golangci-lint run ./... -v --timeout 10m
+		$(CONTAINER_RUNTIME) run -it -v ${PWD}:/go/src -w /go/src docker.io/golangci/golangci-lint:${GOLANG_CI_VER}-alpine golangci-lint run ./... -v
 else
-	golangci-lint run ./... -v --timeout 10m
-endif
-
-# Install link at https://github.com/securego/gosec#install if not running inside a container
-.PHONY: gosec
-gosec: ## inspects source code for security problem by scanning the Go Abstract Syntax Tree
-ifeq ($(CONTAINER_RUNNABLE), 0)
-	$(CONTAINER_RUNTIME) run -it -v ${PWD}:/go/src -w /go/src docker.io/securego/gosec:${GOSEC_VER} ./...
-else
-	gosec ./...
+		golangci-lint run ./... -v --timeout 10m
 endif
 
 ##@ Build
@@ -185,12 +184,14 @@ $(LOCALBIN):
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
+GOSEC ?= $(LOCALBIN)/gosec
 #KPT ?= $(LOCALBIN)/kpt
 #KPTGEN ?= $(LOCALBIN)/kptgen
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.0.1
-CONTROLLER_TOOLS_VERSION ?= v0.11.4
+CONTROLLER_TOOLS_VERSION ?= v0.20.0
+GOSEC_VERSION ?= latest
 #KPT_VERSION ?= main
 #KPTGEN_VERSION ?= v0.0.9
 
@@ -204,6 +205,12 @@ $(KUSTOMIZE): $(LOCALBIN)
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
 $(CONTROLLER_GEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/controller-gen || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+
+.PHONY: gosec
+gosec: $(GOSEC) ## inspects source code for security problem by scanning the Go Abstract Syntax Tree
+	$(GOSEC) ./...
+$(GOSEC): $(LOCALBIN)
+	test -s $(LOCALBIN)/gosec || GOBIN=$(LOCALBIN) go install github.com/securego/gosec/v2/cmd/gosec@$(GOSEC_VERSION)
 
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.

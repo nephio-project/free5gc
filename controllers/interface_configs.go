@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"net"
 
-	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
+	nephiov1alpha1 "github.com/nephio-project/api/workload/v1alpha1"
 )
 
 func GetInterfaceConfigs(interfaceConfigs []nephiov1alpha1.InterfaceConfig, interfaceName string) []nephiov1alpha1.InterfaceConfig {
@@ -42,7 +42,7 @@ func GetFirstInterfaceConfig(interfaceConfigs []nephiov1alpha1.InterfaceConfig, 
 		}
 	}
 
-	return nil, fmt.Errorf("Interface %q not found", interfaceName)
+	return nil, fmt.Errorf("interface %q not found", interfaceName)
 }
 
 func GetFirstInterfaceConfigIPv4(interfaceConfigs []nephiov1alpha1.InterfaceConfig, interfaceName string) (string, error) {

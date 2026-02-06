@@ -22,8 +22,8 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
 	refv1alpha1 "github.com/nephio-project/api/references/v1alpha1"
+	nephiov1alpha1 "github.com/nephio-project/api/workload/v1alpha1"
 	"github.com/nephio-project/free5gc/controllers"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -185,7 +185,7 @@ func createConfigMap(log logr.Logger, smfDeployment *nephiov1alpha1.NFDeployment
 	if upfDeployments, err := extractConfigRefUPFDeployments(smfConfigRefs); err == nil {
 		for _, upfDeployment := range upfDeployments {
 			var upfConfig UpfPeerConfigTemplate
-			upfConfig.Name = upfDeployment.ObjectMeta.Name
+			upfConfig.Name = upfDeployment.Name
 			if upfN4Ip, err := controllers.GetFirstInterfaceConfigIPv4(upfDeployment.Spec.Interfaces, "n4"); err != nil {
 				log.Error(err, fmt.Sprintf("Interface N4 not found in UPF NFDeployment Spec %v", upfDeployment.Spec))
 				return nil, err
@@ -200,7 +200,7 @@ func createConfigMap(log logr.Logger, smfDeployment *nephiov1alpha1.NFDeployment
 			}
 			if upfN6Cfg, ok := getNetworkInstances(&upfDeployment.Spec, "n6"); !ok {
 				log.Error(err, fmt.Sprintf("N6 Interface not found in UPF NFDeployment Spec %v", upfDeployment.Spec))
-				return nil, errors.New("No N6 intefaces in UPF NFDeployment Spec")
+				return nil, errors.New("no N6 intefaces in UPF NFDeployment Spec")
 			} else {
 				upfConfig.N6Cfg = upfN6Cfg
 			}

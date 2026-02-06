@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	nephiov1alpha1 "github.com/nephio-project/api/nf_deployments/v1alpha1"
+	nephiov1alpha1 "github.com/nephio-project/api/workload/v1alpha1"
 )
 
 func TestGetInterfaceConfigs(t *testing.T) {
