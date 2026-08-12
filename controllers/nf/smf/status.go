@@ -17,77 +17,15 @@ limitations under the License.
 package smf
 
 import (
-	"math"
-
 	nephiov1alpha1 "github.com/nephio-project/api/workload/v1alpha1"
+	nfstatus "github.com/nephio-project/free5gc/controllers/nf/status"
 	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func createNfDeploymentStatus(deployment *appsv1.Deployment, smfDeployment *nephiov1alpha1.NFDeployment) (nephiov1alpha1.NFDeploymentStatus, bool) {
-	gen := deployment.Generation
-	if gen > math.MaxInt32 {
-		gen = math.MaxInt32
-	}
-	nfDeploymentStatus := nephiov1alpha1.NFDeploymentStatus{
-		ObservedGeneration: int32(gen), // #nosec G115 -- bounded to MaxInt32
-		Conditions:         smfDeployment.Status.Conditions,
-	}
-
-	if len(smfDeployment.Status.Conditions) == 0 {
-		nfDeploymentStatus.Conditions = append(nfDeploymentStatus.Conditions, metav1.Condition{
-			Type:               string(nephiov1alpha1.Reconciling),
-			Status:             metav1.ConditionFalse,
-			Reason:             "MinimumReplicasNotAvailable",
-			Message:            "SMFDeployment pod(s) is(are) starting.",
-			LastTransitionTime: metav1.Now(),
-		})
-
-		return nfDeploymentStatus, true
-	} else if (len(deployment.Status.Conditions) == 0) && (len(smfDeployment.Status.Conditions) > 0) {
-		return nfDeploymentStatus, false
-	}
-
-	// Check the last underlying Deployment status and deduce condition from it
-	lastDeploymentCondition := deployment.Status.Conditions[0]
-	lastSmfDeploymentCondition := smfDeployment.Status.Conditions[len(smfDeployment.Status.Conditions)-1]
-
-	if (lastDeploymentCondition.Type == appsv1.DeploymentProgressing) && (lastSmfDeploymentCondition.Type == string(nephiov1alpha1.Reconciling)) {
-		return nfDeploymentStatus, false
-	}
-
-	if string(lastDeploymentCondition.Type) == string(lastSmfDeploymentCondition.Type) {
-		return nfDeploymentStatus, false
-	}
-
-	switch lastDeploymentCondition.Type {
-	case appsv1.DeploymentAvailable:
-		nfDeploymentStatus.Conditions = append(nfDeploymentStatus.Conditions, metav1.Condition{
-			Type:               string(nephiov1alpha1.Available),
-			Status:             metav1.ConditionTrue,
-			Reason:             "MinimumReplicasAvailable",
-			Message:            "SMFDeployment pods are available.",
-			LastTransitionTime: metav1.Now(),
-		})
-
-	case appsv1.DeploymentProgressing:
-		nfDeploymentStatus.Conditions = append(nfDeploymentStatus.Conditions, metav1.Condition{
-			Type:               string(nephiov1alpha1.Reconciling),
-			Status:             metav1.ConditionFalse,
-			Reason:             "MinimumReplicasNotAvailable",
-			Message:            "SMFDeployment pod(s) is(are) starting.",
-			LastTransitionTime: metav1.Now(),
-		})
-
-	case appsv1.DeploymentReplicaFailure:
-		nfDeploymentStatus.Conditions = append(nfDeploymentStatus.Conditions, metav1.Condition{
-			Type:               string(nephiov1alpha1.Stalled),
-			Status:             metav1.ConditionFalse,
-			Reason:             "MinimumReplicasNotAvailable",
-			Message:            "SMFDeployment pod(s) is(are) failing.",
-			LastTransitionTime: metav1.Now(),
-		})
-	}
-
-	return nfDeploymentStatus, true
+	return nfstatus.CreateNfDeploymentStatus(deployment, smfDeployment, nfstatus.Messages{
+		Starting:  "SMFDeployment pod(s) is(are) starting.",
+		Available: "SMFDeployment pods are available.",
+		Failing:   "SMFDeployment pod(s) is(are) failing.",
+	})
 }

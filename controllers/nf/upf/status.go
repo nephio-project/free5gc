@@ -17,79 +17,15 @@ limitations under the License.
 package upf
 
 import (
-	"math"
-
 	nephiov1alpha1 "github.com/nephio-project/api/workload/v1alpha1"
+	nfstatus "github.com/nephio-project/free5gc/controllers/nf/status"
 	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func createNfDeploymentStatus(deployment *appsv1.Deployment, nfDeployment *nephiov1alpha1.NFDeployment) (nephiov1alpha1.NFDeploymentStatus, bool) {
-	gen := deployment.Generation
-	if gen > math.MaxInt32 {
-		gen = math.MaxInt32
-	}
-	nfDeploymentStatus := nephiov1alpha1.NFDeploymentStatus{
-		ObservedGeneration: int32(gen), // #nosec G115 -- bounded to MaxInt32
-		Conditions:         nfDeployment.Status.Conditions,
-	}
-
-	// Return initial status if there are no status update happened for the NFdeployment
-	if len(nfDeployment.Status.Conditions) == 0 {
-		nfDeploymentStatus.Conditions = append(nfDeploymentStatus.Conditions, metav1.Condition{
-			Type:               string(nephiov1alpha1.Reconciling),
-			Status:             metav1.ConditionFalse,
-			Reason:             "MinimumReplicasNotAvailable",
-			Message:            "NFDeployment pod(s) is(are) starting.",
-			LastTransitionTime: metav1.Now(),
-		})
-
-		return nfDeploymentStatus, true
-	} else if (len(deployment.Status.Conditions) == 0) && (len(nfDeployment.Status.Conditions) > 0) {
-		return nfDeploymentStatus, false
-	}
-
-	// Check the last underlying Deployment status and deduce condition from it
-	lastDeploymentCondition := deployment.Status.Conditions[0]
-	lastNfDeploymentCondition := nfDeployment.Status.Conditions[len(nfDeployment.Status.Conditions)-1]
-
-	// Deployemnt and NFDeployment have different names for processing state, hence we check if one is processing another is reconciling, then state is equal
-	if (lastDeploymentCondition.Type == appsv1.DeploymentProgressing) && (lastNfDeploymentCondition.Type == string(nephiov1alpha1.Reconciling)) {
-		return nfDeploymentStatus, false
-	}
-
-	// if both status types are Available, don't update.
-	if string(lastDeploymentCondition.Type) == string(lastNfDeploymentCondition.Type) {
-		return nfDeploymentStatus, false
-	}
-
-	switch lastDeploymentCondition.Type {
-	case appsv1.DeploymentAvailable:
-		nfDeploymentStatus.Conditions = append(nfDeploymentStatus.Conditions, metav1.Condition{
-			Type:               string(nephiov1alpha1.Available),
-			Status:             metav1.ConditionTrue,
-			Reason:             "MinimumReplicasAvailable",
-			Message:            "NFDeployment pods are available.",
-			LastTransitionTime: metav1.Now(),
-		})
-
-	case appsv1.DeploymentProgressing:
-		nfDeploymentStatus.Conditions = append(nfDeploymentStatus.Conditions, metav1.Condition{
-			Type:               string(nephiov1alpha1.Reconciling),
-			Status:             metav1.ConditionFalse,
-			Reason:             "MinimumReplicasNotAvailable",
-			Message:            "NFDeployment pod(s) is(are) starting.",
-			LastTransitionTime: metav1.Now(),
-		})
-
-	case appsv1.DeploymentReplicaFailure:
-		nfDeploymentStatus.Conditions = append(nfDeploymentStatus.Conditions, metav1.Condition{
-			Type:               string(nephiov1alpha1.Stalled),
-			Status:             metav1.ConditionFalse,
-			Reason:             "MinimumReplicasNotAvailable",
-			Message:            "NFDeployment pod(s) is(are) failing.",
-			LastTransitionTime: metav1.Now(),
-		})
-	}
-	return nfDeploymentStatus, true
+	return nfstatus.CreateNfDeploymentStatus(deployment, nfDeployment, nfstatus.Messages{
+		Starting:  "NFDeployment pod(s) is(are) starting.",
+		Available: "NFDeployment pods are available.",
+		Failing:   "NFDeployment pod(s) is(are) failing.",
+	})
 }
