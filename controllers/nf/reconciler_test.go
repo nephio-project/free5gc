@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Nephio Authors.
+Copyright 2026 The Nephio Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,6 +53,9 @@ func assertWrappedErr(t *testing.T, gotErr, wantErrIs error, provider string) {
 			t.Errorf("err = %v, want nil", gotErr)
 		}
 		return
+	}
+	if gotErr == nil {
+		t.Fatalf("err = nil, want it to wrap %v", wantErrIs)
 	}
 	if !errors.Is(gotErr, wantErrIs) {
 		t.Errorf("err = %v, want it to wrap %v", gotErr, wantErrIs)
