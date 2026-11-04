@@ -18,6 +18,7 @@ package nf
 
 import (
 	"context"
+	"fmt"
 
 	nephiov1alpha1 "github.com/nephio-project/api/workload/v1alpha1"
 	amf "github.com/nephio-project/free5gc/controllers/nf/amf"
@@ -37,6 +38,11 @@ import (
 type NFDeploymentReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+
+	// newNFReconciler resolves the reconciler for a provider; nil selects the
+	// built-in AMF/SMF/UPF mapping. It lets tests substitute a fake child so
+	// Reconcile's error propagation is covered.
+	newNFReconciler func(provider string) (reconcile.Reconciler, bool)
 }
 
 // Sets up the controller with the Manager
@@ -58,15 +64,8 @@ func (r *NFDeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:rbac:groups="",resources=configmaps;services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the NFDeployment object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
+// Reconcile dispatches the NFDeployment to the AMF, SMF, or UPF reconciler
+// named by its Spec.Provider. NFDeployments for any other provider are ignored.
 func (r *NFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx).WithValues("NFDeployment", req.NamespacedName)
 
@@ -81,31 +80,42 @@ func (r *NFDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return reconcile.Result{}, err
 	}
 
-	upfReconciler := &upf.UPFDeploymentReconciler{
-		Client: r.Client,
-		Scheme: r.Scheme,
+	provider := nfDeployment.Spec.Provider
+	resolve := r.newNFReconciler
+	if resolve == nil {
+		resolve = r.resolveNF
 	}
-	amfReconciler := &amf.AMFDeploymentReconciler{
-		Client: r.Client,
-		Scheme: r.Scheme,
-	}
-	smfReconciler := &smf.SMFDeploymentReconciler{
-		Client: r.Client,
-		Scheme: r.Scheme,
-	}
-
-	switch nfDeployment.Spec.Provider {
-	case "upf.free5gc.io":
-		upfresult, _ := upfReconciler.Reconcile(ctx, req)
-		return upfresult, nil
-	case "smf.free5gc.io":
-		smfresult, _ := smfReconciler.Reconcile(ctx, req)
-		return smfresult, nil
-	case "amf.free5gc.io":
-		amfresult, _ := amfReconciler.Reconcile(ctx, req)
-		return amfresult, nil
-	default:
-		log.Info("NFDeployment NOT for free5gc", "nfDeployment.Spec.Provider", nfDeployment.Spec.Provider)
+	child, ok := resolve(provider)
+	if !ok {
+		log.Info("NFDeployment NOT for free5gc", "nfDeployment.Spec.Provider", provider)
 		return reconcile.Result{}, nil
 	}
+
+	return reconcileNF(ctx, req, provider, child)
+}
+
+// resolveNF returns the reconciler that handles a free5GC provider. ok is
+// false when the provider is not one this operator manages.
+func (r *NFDeploymentReconciler) resolveNF(provider string) (reconcile.Reconciler, bool) {
+	switch provider {
+	case "amf.free5gc.io":
+		return &amf.AMFDeploymentReconciler{Client: r.Client, Scheme: r.Scheme}, true
+	case "smf.free5gc.io":
+		return &smf.SMFDeploymentReconciler{Client: r.Client, Scheme: r.Scheme}, true
+	case "upf.free5gc.io":
+		return &upf.UPFDeploymentReconciler{Client: r.Client, Scheme: r.Scheme}, true
+	default:
+		return nil, false
+	}
+}
+
+// reconcileNF runs the NF reconciler and wraps any error it returns, so a
+// failed reconcile is requeued with controller-runtime's rate-limited backoff.
+func reconcileNF(ctx context.Context, req ctrl.Request, provider string, child reconcile.Reconciler) (ctrl.Result, error) {
+	result, err := child.Reconcile(ctx, req)
+	if err != nil {
+		// controller-runtime ignores (and warns on) a non-zero Result when err != nil; drop it.
+		return reconcile.Result{}, fmt.Errorf("reconciling %s: %w", provider, err)
+	}
+	return result, nil
 }
